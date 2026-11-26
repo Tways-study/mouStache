@@ -1,0 +1,64 @@
+- generic [ref=f3e3]:
+  - generic [ref=f3e5]:
+    - banner [ref=f3e6]:
+      - generic [ref=f3e7]:
+        - generic [ref=f3e8]:
+          - heading "Stash" [level=1] [ref=f3e9]
+          - generic "0 items" [ref=f3e10]: ~/stash
+        - button "Add to Stash" [ref=f3e12]
+        - button "Settings" [ref=f3e15]
+      - generic [ref=f3e19]:
+        - textbox "Search your Stash" [ref=f3e23]:
+          - /placeholder: Search your Stash…
+        - generic [ref=f3e24]: /
+      - tablist "Filter by type" [ref=f3e25]:
+        - tab "All 0" [selected] [ref=f3e26]:
+          - text: All
+          - generic [ref=f3e27]: "0"
+        - tab "Pinned 0" [ref=f3e28]:
+          - text: Pinned
+          - generic [ref=f3e31]: "0"
+    - generic [ref=f3e32]:
+      - generic [ref=f3e33]:
+        - paragraph [ref=f3e34]: $ stash ls
+        - heading "~/stash is empty" [level=2] [ref=f3e35]
+        - paragraph [ref=f3e37]: Snippets, commands, prompts and screenshots you copy will collect here, tagged and searchable.
+      - list [ref=f3e38]:
+        - listitem [ref=f3e39]:
+          - generic [ref=f3e40]: "1"
+          - generic [ref=f3e41]:
+            - generic [ref=f3e42]: Copy anything — it lands here
+            - generic [ref=f3e43]:
+              - generic [ref=f3e44]: Select text on any page, then
+              - generic [ref=f3e45]:
+                - generic [ref=f3e46]: Ctrl
+                - generic [ref=f3e47]: C
+        - listitem [ref=f3e48]:
+          - generic [ref=f3e49]: "2"
+          - generic [ref=f3e50]:
+            - generic [ref=f3e51]: Search and paste from anywhere
+            - generic [ref=f3e52]:
+              - generic [ref=f3e53]:
+                - generic [ref=f3e54]: Ctrl
+                - generic [ref=f3e55]: Shift
+                - generic [ref=f3e56]: V
+              - generic [ref=f3e57]: opens the quick palette on any tab
+        - listitem [ref=f3e58]:
+          - generic [ref=f3e59]: "3"
+          - generic [ref=f3e60]:
+            - generic [ref=f3e61]: Paste screenshots here
+            - generic [ref=f3e62]:
+              - generic [ref=f3e63]:
+                - generic [ref=f3e64]: Win
+                - generic [ref=f3e65]: Shift
+                - generic [ref=f3e66]: S
+              - generic [ref=f3e67]: then
+              - generic [ref=f3e68]:
+                - generic [ref=f3e69]: Ctrl
+                - generic [ref=f3e70]: V
+              - generic [ref=f3e71]: in this panel
+      - button "Paste from clipboard" [ref=f3e72]
+      - paragraph [ref=f3e75]:
+        - generic [ref=f3e78]: "Pin Stash to your toolbar: open the puzzle-piece menu, then click the pin next to Stash."
+  - status [ref=f3e79]
+  - status [ref=f3e80]

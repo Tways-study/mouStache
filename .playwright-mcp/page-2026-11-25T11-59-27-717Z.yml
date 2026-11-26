@@ -1,0 +1,296 @@
+- generic [ref=f2e3]:
+  - generic [ref=f2e5]:
+    - banner [ref=f2e6]:
+      - generic [ref=f2e7]:
+        - generic [ref=f2e8]:
+          - heading "Stash" [level=1] [ref=f2e16]
+          - generic "1515 items" [ref=f2e41]: ~/stash · 1515
+        - button "Add to Stash" [ref=f2e19]
+        - button "Settings" [ref=f2e22]
+      - generic [ref=f2e26]:
+        - textbox "Search your Stash" [ref=f2e30]:
+          - /placeholder: Search your Stash…
+        - generic [ref=f2e31]: /
+      - tablist "Filter by type" [ref=f2e32]:
+        - tab "All 1515" [selected] [ref=f2e42]:
+          - text: All
+          - generic [ref=f2e34]: "1515"
+        - tab "Pinned 5" [ref=f2e43]:
+          - text: Pinned
+          - generic [ref=f2e38]: "5"
+        - tab "Code 678" [ref=f2e44]:
+          - text: Code
+          - generic [ref=f2e45]: "678"
+        - tab "Prompts 60" [ref=f2e46]:
+          - text: Prompts
+          - generic [ref=f2e47]: "60"
+        - tab "Images 51" [ref=f2e48]:
+          - text: Images
+          - generic [ref=f2e49]: "51"
+        - tab "Links 314" [ref=f2e50]:
+          - text: Links
+          - generic [ref=f2e51]: "314"
+        - tab "Network 1" [ref=f2e52]:
+          - text: Network
+          - generic [ref=f2e53]: "1"
+        - tab "Errors 130" [ref=f2e54]:
+          - text: Errors
+          - generic [ref=f2e55]: "130"
+        - tab "Data 27" [ref=f2e56]:
+          - text: Data
+          - generic [ref=f2e57]: "27"
+    - list "Saved items" [ref=f2e58]:
+      - button "Pinned, 5 items, expanded" [expanded] [ref=f2e59]:
+        - generic [ref=f2e62]: Pinned
+        - generic [ref=f2e64]: "5"
+      - 'listitem "public static int gcd(int a, int b) { return b == 0 ? a : gcd(b, a % b); } /. Press Enter to copy." [ref=f2e66]':
+        - generic [ref=f2e67]:
+          - code [ref=f2e72]:
+            - generic [ref=f2e73]: "public static int gcd(int a, int b) {"
+            - generic [ref=f2e74]: "return b == 0 ? a : gcd(b, a % b);"
+            - generic [ref=f2e75]: "} // exercise 120"
+          - generic [ref=f2e76]:
+            - generic [ref=f2e84]: Java
+            - generic [ref=f2e85]: 7h
+            - generic "Pinned" [ref=f2e86]
+        - generic:
+          - button "Copy"
+          - button "Unpin" [pressed]
+          - button "Expand"
+          - button "Delete"
+      - 'listitem "def fib(n: int, memo: dict[int, int] | None = None) -> int: \"\"\"Memoised Fibo. Press Enter to copy." [ref=f2e90]':
+        - generic [ref=f2e91]:
+          - code [ref=f2e96]:
+            - generic [ref=f2e97]: "def fib(n: int, memo: dict[int, int] | None = None) -> int:"
+            - generic [ref=f2e98]: "\"\"\"Memoised Fibonacci.\"\"\""
+            - generic [ref=f2e99]: "memo = memo or {}"
+            - generic [ref=f2e100]: "if n < 2:"
+            - generic [ref=f2e101]: return n
+          - button "Show more" [ref=f2e102]
+          - generic [ref=f2e103]:
+            - generic [ref=f2e111]: Python
+            - generic [ref=f2e112]: 2d · docs.python.org
+            - generic "Pinned" [ref=f2e113]
+        - generic:
+          - button "Copy"
+          - button "Unpin" [pressed]
+          - button "Expand"
+          - button "Delete"
+      - 'listitem "Lecture 92: normalisation removes redundancy; 3NF requires every non-key attribu. Press Enter to copy." [ref=f2e117]':
+        - generic [ref=f2e118]:
+          - paragraph [ref=f2e119]: "Lecture 92: normalisation removes redundancy; 3NF requires every non-key attribute to depend on the key, the whole key and nothing but the key."
+          - generic [ref=f2e120]:
+            - generic [ref=f2e128]: 3d · canvas.uni.edu
+            - generic "Pinned" [ref=f2e129]
+        - generic:
+          - button "Copy"
+          - button "Unpin" [pressed]
+          - button "Expand"
+          - button "Delete"
+      - listitem "nmap -sS -sV -p- -T4 --min-rate 1000 -oA scan 10.10.11.42. Press Enter to copy." [ref=f2e133]:
+        - generic [ref=f2e134]:
+          - code [ref=f2e139]:
+            - generic [ref=f2e140]: nmap -sS -sV -p- -T4 --min-rate 1000 -oA scan 10.10.11.42
+          - generic [ref=f2e141]:
+            - generic [ref=f2e149]: Command
+            - generic [ref=f2e150]: Bash
+            - generic [ref=f2e151]: IP
+            - generic [ref=f2e152]: 5d · app.hackthebox.com
+            - generic "Pinned" [ref=f2e153]
+        - generic:
+          - button "Copy"
+          - button "Unpin" [pressed]
+          - button "Expand"
+          - button "Delete"
+      - 'listitem "fatal: refusing to merge unrelated histories (attempt 232) #400. Press Enter to copy." [ref=f2e157]':
+        - generic [ref=f2e158]:
+          - code [ref=f2e162]: "fatal: refusing to merge unrelated histories (attempt 232) #400"
+          - generic [ref=f2e163]:
+            - generic [ref=f2e171]: Error
+            - generic [ref=f2e172]: 2mo · docs.python.org
+            - generic "Pinned" [ref=f2e173]
+        - generic:
+          - button "Copy"
+          - button "Unpin" [pressed]
+          - button "Expand"
+          - button "Delete"
+      - button "Today, 149 items, expanded" [expanded] [ref=f2e176]:
+        - generic [ref=f2e179]: Today
+        - generic [ref=f2e181]: "149"
+      - 'listitem "tar -czf backup-104.tar.gz ./data #1312. Press Enter to copy." [ref=f2e183]':
+        - generic [ref=f2e184]:
+          - code [ref=f2e189]:
+            - generic [ref=f2e190]: "tar -czf backup-104.tar.gz ./data #1312"
+          - generic [ref=f2e191]:
+            - generic [ref=f2e199]: Command
+            - generic [ref=f2e200]: 1m
+        - generic:
+          - button "Copy"
+          - button "Pin"
+          - button "Expand"
+          - button "Delete"
+      - listitem "SELECT c.name, COUNT(e.id) AS enrolments FROM courses c LEFT JOIN enrolments e O. Press Enter to copy." [ref=f2e202]:
+        - generic [ref=f2e203]:
+          - code [ref=f2e208]:
+            - generic [ref=f2e209]: SELECT c.name, COUNT(e.id) AS enrolments
+            - generic [ref=f2e210]: FROM courses c
+            - generic [ref=f2e211]: LEFT JOIN enrolments e ON e.course_id = c.id
+            - generic [ref=f2e212]: WHERE c.semester = '2026S1'
+            - generic [ref=f2e213]: GROUP BY c.name
+          - button "Show more" [ref=f2e214]
+          - generic [ref=f2e215]:
+            - generic [ref=f2e223]: SQL
+            - generic [ref=f2e224]: 4m · dbfiddle.uk
+        - generic:
+          - button "Copy"
+          - button "Pin"
+          - button "Expand"
+          - button "Delete"
+      - 'listitem "TypeError: Cannot read properties of undefined (reading ''map'') at render (App.ts. Press Enter to copy." [ref=f2e226]':
+        - generic [ref=f2e227]:
+          - code [ref=f2e231]: "TypeError: Cannot read properties of undefined (reading 'map') at render (App.tsx:241:12) #137"
+          - generic [ref=f2e232]:
+            - generic [ref=f2e240]: Error
+            - generic [ref=f2e241]: 6m
+        - generic:
+          - button "Copy"
+          - button "Pin"
+          - button "Expand"
+          - button "Delete"
+      - listitem "Image 1920 by 1080. Press Enter to copy." [ref=f2e243]:
+        - generic [ref=f2e244]:
+          - img "Captured image" [ref=f2e246]
+          - generic [ref=f2e247]:
+            - generic [ref=f2e255]: Screenshot
+            - generic [ref=f2e256]:
+              - text: 11m ·
+              - generic [ref=f2e257]: 1920×1080
+              - text: · wireshark.org
+        - generic:
+          - button "Copy"
+          - button "Pin"
+          - button "Expand"
+          - button "Delete"
+      - listitem "Get-NetTCPConnection -State Listen | Select-Object LocalAddress, LocalPort, Ow. Press Enter to copy." [ref=f2e259]:
+        - generic [ref=f2e260]:
+          - code [ref=f2e265]:
+            - generic [ref=f2e266]: Get-NetTCPConnection -State Listen |
+            - generic [ref=f2e267]: Select-Object LocalAddress, LocalPort, OwningProcess |
+            - generic [ref=f2e268]: Sort-Object LocalPort
+          - generic [ref=f2e269]:
+            - generic [ref=f2e277]: PowerShell
+            - generic [ref=f2e278]: Command
+            - generic [ref=f2e279]: 26m
+        - generic:
+          - button "Copy"
+          - button "Pin"
+          - button "Expand"
+          - button "Delete"
+  - dialog "Settings" [active] [ref=f2e282]:
+    - banner [ref=f2e283]:
+      - button "Back" [ref=f2e284]
+      - generic [ref=f2e287]:
+        - generic [ref=f2e288]: ~/stash/settings
+        - heading "Settings" [level=2] [ref=f2e289]
+    - generic [ref=f2e291]:
+      - generic [ref=f2e292]:
+        - heading "Comfort" [level=3] [ref=f2e293]
+        - generic [ref=f2e294]:
+          - generic [ref=f2e295]:
+            - generic [ref=f2e296]: Theme
+            - radiogroup "Theme" [ref=f2e298]:
+              - radio "System" [ref=f2e299]
+              - radio "Light" [ref=f2e300]
+              - radio "Dark" [checked] [ref=f2e301]
+          - generic [ref=f2e302]:
+            - generic [ref=f2e303]: Text size
+            - radiogroup "Text size" [ref=f2e305]:
+              - radio "Small" [ref=f2e306]
+              - radio "Default" [ref=f2e307]
+              - radio "Large" [checked] [ref=f2e308]
+              - radio "Extra large" [ref=f2e309]
+          - generic [ref=f2e310]:
+            - generic [ref=f2e311]:
+              - generic [ref=f2e312]: Density
+              - generic [ref=f2e313]: Cards with previews
+            - radiogroup "Density" [ref=f2e314]:
+              - radio "Comfortable" [checked] [ref=f2e315]
+              - radio "Compact" [ref=f2e316]
+          - generic [ref=f2e317]:
+            - generic [ref=f2e318]: Reduce motion
+            - radiogroup "Reduce motion" [ref=f2e320]:
+              - radio "System" [checked] [ref=f2e321]
+              - radio "On" [ref=f2e322]
+              - radio "Off" [ref=f2e323]
+          - generic [ref=f2e324]:
+            - generic [ref=f2e325]:
+              - generic [ref=f2e326]: Quiet mode
+              - generic [ref=f2e327]: No on-page toast, no toolbar badge count
+            - switch "Quiet mode" [ref=f2e328]
+        - paragraph [ref=f2e330]: Changes apply right away, in the panel and on pages.
+      - generic [ref=f2e331]:
+        - heading "Capture" [level=3] [ref=f2e332]
+        - generic [ref=f2e333]:
+          - generic [ref=f2e334]:
+            - generic [ref=f2e335]:
+              - generic [ref=f2e336]: Auto-capture copies
+              - generic [ref=f2e337]: Save text you copy on any page
+            - switch "Auto-capture copies" [checked] [ref=f2e338]
+          - generic [ref=f2e340]:
+            - generic [ref=f2e341]:
+              - generic [ref=f2e342]: Show “Saved” toast
+              - generic [ref=f2e343]: A small pill on the page after a capture
+            - switch "Show Saved toast" [checked] [ref=f2e344]
+          - generic [ref=f2e346]:
+            - generic [ref=f2e347]:
+              - generic [ref=f2e348]: Skip secrets on auto-capture
+              - generic [ref=f2e349]: Keys, tokens and passwords are never saved
+            - switch "Skip secrets on auto-capture" [checked] [ref=f2e350]
+      - generic [ref=f2e352]:
+        - heading "Storage" [level=3] [ref=f2e353]
+        - generic [ref=f2e354]:
+          - generic [ref=f2e355]:
+            - generic [ref=f2e356]: Keep up to
+            - radiogroup "Maximum items" [ref=f2e358]:
+              - radio "500" [ref=f2e359]
+              - radio "1,000" [ref=f2e360]
+              - radio "2,000" [checked] [ref=f2e361]
+              - radio "5,000" [ref=f2e362]
+            - paragraph [ref=f2e363]: Oldest unpinned items are removed first.
+          - generic [ref=f2e364]:
+            - generic [ref=f2e365]: Delete unpinned items older than
+            - radiogroup "Auto-cleanup" [ref=f2e367]:
+              - radio "Never" [checked] [ref=f2e368]
+              - radio "7 days" [ref=f2e369]
+              - radio "30 days" [ref=f2e370]
+              - radio "90 days" [ref=f2e371]
+            - paragraph [ref=f2e372]: Nothing is removed by age.
+          - button "Clean up screenshots 24 older than 30 days" [ref=f2e373]:
+            - text: Clean up screenshots
+            - generic [ref=f2e374]: 24 older than 30 days
+          - paragraph [ref=f2e375]: Stash is using 1,515 items
+      - generic [ref=f2e376]:
+        - heading "Paused sites" [level=3] [ref=f2e377]
+        - generic [ref=f2e379]:
+          - generic [ref=f2e381]:
+            - text: bank.example.com
+            - button "Resume capture on bank.example.com" [ref=f2e382]
+          - generic [ref=f2e385]:
+            - textbox "Site to pause" [ref=f2e386]:
+              - /placeholder: example.com
+            - button "Add" [ref=f2e387]
+        - paragraph [ref=f2e388]: Stash won’t capture copies on these sites.
+      - generic [ref=f2e389]:
+        - heading "Your data" [level=3] [ref=f2e390]
+        - generic [ref=f2e391]:
+          - button "Export JSON" [ref=f2e392]
+          - button "Import JSON" [ref=f2e395]
+      - button "Keyboard shortcuts" [ref=f2e400]
+      - generic [ref=f2e403]:
+        - heading "Danger zone" [level=3] [ref=f2e404]
+        - generic [ref=f2e405]:
+          - button "Clear history (keep pinned)" [ref=f2e406]
+          - button "Delete everything" [ref=f2e407]
+    - contentinfo [ref=f2e408]: stash v0.1.0 · stored on this device only
+  - status [ref=f2e39]
+  - status [ref=f2e40]

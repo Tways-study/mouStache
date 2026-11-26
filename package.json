@@ -1,0 +1,42 @@
+{
+  "name": "stash",
+  "description": "Your clipboard, organised — built for IT students.",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "postinstall": "wxt prepare",
+    "test": "vitest run",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "icons": "node scripts/gen-icons.mjs",
+    "e2e": "npm run build && playwright test"
+  },
+  "dependencies": {
+    "@shikijs/langs": "^4.6.0",
+    "@shikijs/themes": "^4.6.0",
+    "dexie": "^4.4.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "shiki": "^4.6.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/chrome": "^0.3.8",
+    "@types/react": "^18.3.32",
+    "@types/react-dom": "^18.3.7",
+    "@wxt-dev/module-react": "^1.2.2",
+    "electron": "^45.5.0",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
+    "fake-indexeddb": "^6.2.8",
+    "happy-dom": "^21.0.4",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1",
+    "wxt": "^0.21.5"
+  }
+}

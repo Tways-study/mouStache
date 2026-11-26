@@ -1,0 +1,337 @@
+- generic [ref=f16e3]:
+  - generic [ref=f16e5]:
+    - banner [ref=f16e6]:
+      - generic [ref=f16e7]:
+        - generic [ref=f16e8]:
+          - heading "Stash" [level=1] [ref=f16e9]
+          - generic "15 items" [ref=f16e35]: ~/stash · 15
+        - button "Add to Stash" [ref=f16e12]
+        - button "Settings" [ref=f16e15]
+      - generic [ref=f16e19]:
+        - textbox "Search your Stash" [ref=f16e23]:
+          - /placeholder: Search your Stash…
+        - generic [ref=f16e24]: /
+      - tablist "Filter by type" [ref=f16e25]:
+        - tab "All 15" [selected] [ref=f16e36]:
+          - text: All
+          - generic [ref=f16e27]: "15"
+        - tab "Pinned 2" [ref=f16e37]:
+          - text: Pinned
+          - generic [ref=f16e31]: "2"
+        - tab "Code 6" [ref=f16e38]:
+          - text: Code
+          - generic [ref=f16e39]: "6"
+        - tab "Prompts 1" [ref=f16e40]:
+          - text: Prompts
+          - generic [ref=f16e41]: "1"
+        - tab "Images 3" [ref=f16e42]:
+          - text: Images
+          - generic [ref=f16e43]: "3"
+        - tab "Links 1" [ref=f16e44]:
+          - text: Links
+          - generic [ref=f16e45]: "1"
+        - tab "Network 1" [ref=f16e46]:
+          - text: Network
+          - generic [ref=f16e47]: "1"
+        - tab "Errors 1" [ref=f16e48]:
+          - text: Errors
+          - generic [ref=f16e49]: "1"
+        - tab "Data 2" [ref=f16e50]:
+          - text: Data
+          - generic [ref=f16e51]: "2"
+    - list "Saved items" [ref=f16e32]:
+      - region "Pinned" [ref=f16e52]:
+        - heading "Pinned 2" [level=2] [ref=f16e53]:
+          - text: Pinned
+          - generic [ref=f16e55]: "2"
+        - generic [ref=f16e56]:
+          - 'listitem "def fib(n: int, memo: dict[int, int] | None = None) -> int: \"\"\"Memoised Fibo. Press Enter to copy." [ref=f16e57]':
+            - generic [ref=f16e58]:
+              - code [ref=f16e63]:
+                - generic [ref=f16e64]: "def fib(n: int, memo: dict[int, int] | None = None) -> int:"
+                - generic [ref=f16e65]: "\"\"\"Memoised Fibonacci.\"\"\""
+                - generic [ref=f16e66]: "memo = memo or {}"
+                - generic [ref=f16e67]: "if n < 2:"
+                - generic [ref=f16e68]: return n
+              - generic [ref=f16e69]:
+                - generic [ref=f16e77]: Python
+                - generic [ref=f16e78]: 2d · docs.python.org
+                - generic "Pinned" [ref=f16e79]
+            - generic:
+              - button "Copy"
+              - button "Unpin" [pressed]
+              - button "Expand"
+              - button "Delete"
+          - listitem "nmap -sS -sV -p- -T4 --min-rate 1000 -oA scan 10.10.11.42. Press Enter to copy." [ref=f16e82]:
+            - generic [ref=f16e83]:
+              - code [ref=f16e88]:
+                - generic [ref=f16e89]: nmap -sS -sV -p- -T4 --min-rate 1000 -oA scan 10.10.11.42
+              - generic [ref=f16e90]:
+                - generic [ref=f16e98]: Command
+                - generic [ref=f16e99]: Bash
+                - generic [ref=f16e100]: IP
+                - generic [ref=f16e101]: 5d · app.hackthebox.com
+                - generic "Pinned" [ref=f16e102]
+            - generic:
+              - button "Copy"
+              - button "Unpin" [pressed]
+              - button "Expand"
+              - button "Delete"
+      - region "Today" [ref=f16e105]:
+        - heading "Today 8" [level=2] [ref=f16e106]:
+          - text: Today
+          - generic [ref=f16e108]: "8"
+        - generic [ref=f16e109]:
+          - listitem "SELECT c.name, COUNT(e.id) AS enrolments FROM courses c LEFT JOIN enrolments e O. Press Enter to copy." [ref=f16e110]:
+            - generic [ref=f16e111]:
+              - code [ref=f16e116]:
+                - generic [ref=f16e117]: SELECT c.name, COUNT(e.id) AS enrolments
+                - generic [ref=f16e118]: FROM courses c
+                - generic [ref=f16e119]: LEFT JOIN enrolments e ON e.course_id = c.id
+                - generic [ref=f16e120]: WHERE c.semester = '2026S1'
+                - generic [ref=f16e121]: GROUP BY c.name
+              - generic [ref=f16e122]:
+                - generic [ref=f16e130]: SQL
+                - generic [ref=f16e131]: 4m · dbfiddle.uk
+            - generic:
+              - button "Copy"
+              - button "Pin"
+              - button "Expand"
+              - button "Delete"
+          - listitem "Image 1920 by 1080. Press Enter to copy." [ref=f16e132]:
+            - generic [ref=f16e133]:
+              - img "Captured image" [ref=f16e135]
+              - generic [ref=f16e136]:
+                - generic [ref=f16e144]: Screenshot
+                - generic [ref=f16e145]:
+                  - text: 11m ·
+                  - generic [ref=f16e146]: 1920×1080
+                  - text: · wireshark.org
+            - generic:
+              - button "Copy"
+              - button "Pin"
+              - button "Expand"
+              - button "Delete"
+          - listitem "Get-NetTCPConnection -State Listen | Select-Object LocalAddress, LocalPort, Ow. Press Enter to copy." [ref=f16e147]:
+            - generic [ref=f16e148]:
+              - code [ref=f16e153]:
+                - generic [ref=f16e154]: Get-NetTCPConnection -State Listen |
+                - generic [ref=f16e155]: Select-Object LocalAddress, LocalPort, OwningProcess |
+                - generic [ref=f16e156]: Sort-Object LocalPort
+              - generic [ref=f16e157]:
+                - generic [ref=f16e165]: PowerShell
+                - generic [ref=f16e166]: Command
+                - generic [ref=f16e167]: 26m
+            - generic:
+              - button "Copy"
+              - button "Pin"
+              - button "Expand"
+              - button "Delete"
+          - 'listitem "You are a senior {{role}}. Explain {{topic}} to a second-year student using one . Press Enter to copy." [ref=f16e168]':
+            - generic [ref=f16e169]:
+              - paragraph [ref=f16e170]: "You are a senior {{role}}. Explain {{topic}} to a second-year student using one analogy and one code example. Keep it under 200 words and end with a 3-question quiz."
+              - generic [ref=f16e171]:
+                - generic [ref=f16e179]: Prompt
+                - generic [ref=f16e180]: 50m · claude.ai
+            - generic:
+              - button "Copy"
+              - button "Pin"
+              - button "Expand"
+              - button "Delete"
+          - 'listitem "{ \"name\": \"stash\", \"version\": \"0.1.0\", \"scripts\": { \"build\": \"wxt build\", . Press Enter to copy." [ref=f16e181]':
+            - generic [ref=f16e182]:
+              - code [ref=f16e187]:
+                - generic [ref=f16e188]: "{"
+                - generic [ref=f16e189]: "\"name\": \"stash\","
+                - generic [ref=f16e190]: "\"version\": \"0.1.0\","
+                - generic [ref=f16e191]: "\"scripts\": { \"build\": \"wxt build\", \"test\": \"vitest run\" },"
+                - generic [ref=f16e192]: "\"dependencies\": { \"react\": \"^18.3.1\", \"dexie\": \"^4.4.7\" }"
+              - generic [ref=f16e193]:
+                - generic [ref=f16e201]: JSON
+                - generic [ref=f16e202]: 2h · github.com
+            - generic:
+              - button "Copy"
+              - button "Pin"
+              - button "Expand"
+              - button "Delete"
+          - listitem "https://github.com/pallets/flask/blob/main/src/flask/app.py#L1123. Press Enter to copy." [ref=f16e203]:
+            - generic [ref=f16e204]:
+              - generic [ref=f16e205]:
+                - generic [ref=f16e206]: github.com
+                - generic [ref=f16e207]: /pallets/flask/blob/main/src/flask/app.py#L1123
+              - generic [ref=f16e208]:
+                - generic [ref=f16e216]: URL
+                - generic [ref=f16e217]: 3h · github.com
+            - generic:
+              - button "Copy"
+              - button "Pin"
+              - button "Expand"
+              - button "Delete"
+          - listitem "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY. Press Enter to copy." [ref=f16e218]:
+            - generic [ref=f16e219]:
+              - generic [ref=f16e220]:
+                - code [ref=f16e225]: AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+                - generic [ref=f16e226]: Secret hidden
+                - button "Reveal" [ref=f16e227]
+              - generic [ref=f16e230]:
+                - generic [ref=f16e238]: Secret
+                - generic [ref=f16e239]: 5h · console.aws.amazon.com
+            - generic:
+              - button "Copy"
+              - button "Pin"
+              - button "Expand"
+              - button "Delete"
+          - listitem "192.168.10.0/24 — VLAN 10 (Students) Gateway 192.168.10.1, DHCP .50–.200. Press Enter to copy." [ref=f16e240]:
+            - generic [ref=f16e241]:
+              - code [ref=f16e245]: 192.168.10.0/24 — VLAN 10 (Students) Gateway 192.168.10.1, DHCP .50–.200
+              - generic [ref=f16e246]:
+                - generic [ref=f16e254]: CIDR
+                - generic [ref=f16e255]: IP
+                - generic [ref=f16e256]: 9h
+            - generic:
+              - button "Copy"
+              - button "Pin"
+              - button "Expand"
+              - button "Delete"
+      - region "Yesterday" [ref=f16e257]:
+        - heading "Yesterday 2" [level=2] [ref=f16e258]:
+          - text: Yesterday
+          - generic [ref=f16e260]: "2"
+        - generic [ref=f16e261]:
+          - 'listitem "Traceback (most recent call last): File \"app.py\", line 42, in <module> mai. Press Enter to copy." [ref=f16e262]':
+            - generic [ref=f16e263]:
+              - code [ref=f16e268]:
+                - generic [ref=f16e269]: "Traceback (most recent call last):"
+                - generic [ref=f16e270]: File "app.py", line 42, in <module>
+                - generic [ref=f16e271]: main()
+                - generic [ref=f16e272]: File "app.py", line 37, in main
+                - generic [ref=f16e273]: user = users[idx]
+              - generic [ref=f16e274]:
+                - generic [ref=f16e282]: Stack trace
+                - generic [ref=f16e283]: Error
+                - generic [ref=f16e284]: Python
+                - generic [ref=f16e285]: 1d
+            - generic:
+              - button "Copy"
+              - button "Pin"
+              - button "Expand"
+              - button "Delete"
+          - listitem "Image 1440 by 900. Press Enter to copy." [ref=f16e286]:
+            - generic [ref=f16e287]:
+              - img "Captured image" [ref=f16e289]
+              - generic [ref=f16e290]:
+                - generic [ref=f16e298]: Screenshot
+                - generic [ref=f16e299]:
+                  - text: 1d ·
+                  - generic [ref=f16e300]: 1440×900
+            - generic:
+              - button "Copy"
+              - button "Pin"
+              - button "Expand"
+              - button "Delete"
+      - region "This week" [ref=f16e301]:
+        - heading "This week 1" [level=2] [ref=f16e302]:
+          - text: This week
+          - generic [ref=f16e304]: "1"
+        - listitem "#0a84ff. Press Enter to copy." [ref=f16e306]:
+          - generic [ref=f16e307]:
+            - generic [ref=f16e308]: "#0a84ff"
+            - generic [ref=f16e309]:
+              - generic [ref=f16e317]: Hex color
+              - generic [ref=f16e318]: 3d
+          - generic:
+            - button "Copy"
+            - button "Pin"
+            - button "Expand"
+            - button "Delete"
+      - region "Earlier" [ref=f16e319]:
+        - heading "Earlier 2" [level=2] [ref=f16e320]:
+          - text: Earlier
+          - generic [ref=f16e322]: "2"
+        - generic [ref=f16e323]:
+          - listitem "Image 1280 by 720. Press Enter to copy." [ref=f16e324]:
+            - generic [ref=f16e325]:
+              - img "Captured image" [ref=f16e327]
+              - generic [ref=f16e328]:
+                - generic [ref=f16e336]: Screenshot
+                - generic [ref=f16e337]:
+                  - text: 12d ·
+                  - generic [ref=f16e338]: 1280×720
+            - generic:
+              - button "Copy"
+              - button "Pin"
+              - button "Expand"
+              - button "Delete"
+          - listitem "git rebase -i HEAD~4 && git push --force-with-lease origin feature/auth. Press Enter to copy." [ref=f16e339]:
+            - generic [ref=f16e340]:
+              - code [ref=f16e345]:
+                - generic [ref=f16e346]: git rebase -i HEAD~4 && git push --force-with-lease origin feature/auth
+              - generic [ref=f16e347]:
+                - generic [ref=f16e355]: Command
+                - generic [ref=f16e356]: Bash
+                - generic [ref=f16e357]: 14d
+            - generic:
+              - button "Copy"
+              - button "Pin"
+              - button "Expand"
+              - button "Delete"
+  - dialog "Settings" [active] [ref=f16e360]:
+    - banner [ref=f16e361]:
+      - button "Back" [ref=f16e362]
+      - generic [ref=f16e365]:
+        - generic [ref=f16e366]: ~/stash/settings
+        - heading "Settings" [level=2] [ref=f16e367]
+    - generic [ref=f16e369]:
+      - generic [ref=f16e370]:
+        - heading "Capture" [level=3] [ref=f16e371]
+        - generic [ref=f16e372]:
+          - generic [ref=f16e373]:
+            - generic [ref=f16e374]:
+              - generic [ref=f16e375]: Auto-capture copies
+              - generic [ref=f16e376]: Save text you copy on any page
+            - switch "Auto-capture copies" [checked] [ref=f16e377]
+          - generic [ref=f16e379]:
+            - generic [ref=f16e380]:
+              - generic [ref=f16e381]: Show “Saved” toast
+              - generic [ref=f16e382]: A small pill on the page after a capture
+            - switch "Show Saved toast" [checked] [ref=f16e383]
+          - generic [ref=f16e385]:
+            - generic [ref=f16e386]:
+              - generic [ref=f16e387]: Skip secrets on auto-capture
+              - generic [ref=f16e388]: Keys, tokens and passwords are never saved
+            - switch "Skip secrets on auto-capture" [checked] [ref=f16e389]
+      - generic [ref=f16e391]:
+        - heading "Storage" [level=3] [ref=f16e392]
+        - generic [ref=f16e394]:
+          - generic [ref=f16e395]: Keep up to
+          - radiogroup "Maximum items" [ref=f16e396]:
+            - radio "500" [ref=f16e397]
+            - radio "1,000" [ref=f16e398]
+            - radio "2,000" [checked] [ref=f16e399]
+            - radio "5,000" [ref=f16e400]
+          - paragraph [ref=f16e401]: Oldest unpinned items are removed first.
+      - generic [ref=f16e402]:
+        - heading "Paused sites" [level=3] [ref=f16e403]
+        - generic [ref=f16e405]:
+          - generic [ref=f16e407]:
+            - text: bank.example.com
+            - button "Resume capture on bank.example.com" [ref=f16e408]
+          - generic [ref=f16e411]:
+            - textbox "Site to pause" [ref=f16e412]:
+              - /placeholder: example.com
+            - button "Add" [ref=f16e413]
+        - paragraph [ref=f16e414]: Stash won’t capture copies on these sites.
+      - generic [ref=f16e415]:
+        - heading "Your data" [level=3] [ref=f16e416]
+        - generic [ref=f16e417]:
+          - button "Export JSON" [ref=f16e418]
+          - button "Import JSON" [ref=f16e421]
+      - button "Keyboard shortcuts" [ref=f16e426]
+      - generic [ref=f16e429]:
+        - heading "Danger zone" [level=3] [ref=f16e430]
+        - generic [ref=f16e431]:
+          - button "Clear history (keep pinned)" [ref=f16e432]
+          - button "Delete everything" [ref=f16e433]
+    - contentinfo [ref=f16e434]: stash v0.1.0 · stored on this device only
+  - status [ref=f16e33]
+  - status [ref=f16e34]

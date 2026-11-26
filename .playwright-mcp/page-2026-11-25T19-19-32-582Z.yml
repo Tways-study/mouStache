@@ -1,0 +1,22 @@
+- generic [ref=f2e3]:
+  - banner [ref=f2e6]:
+    - generic [ref=f2e7]:
+      - generic [ref=f2e8]:
+        - heading "mouStache" [level=1] [ref=f2e15]
+        - generic "0 items" [ref=f2e16]: ~/moustache
+      - button "Add to mouStache" [ref=f2e18]
+      - button "Settings" [ref=f2e21]
+    - generic [ref=f2e25]:
+      - textbox "Search your mouStache" [ref=f2e29]:
+        - /placeholder: Search your mouStache…
+        - text: zzzzqq
+      - button "Clear search" [ref=f2e30]
+    - tablist "Filter by type" [ref=f2e33]:
+      - tab "All 0" [selected] [ref=f2e34]:
+        - text: All
+        - generic [ref=f2e35]: "0"
+      - tab "Pinned 0" [ref=f2e36]:
+        - text: Pinned
+        - generic [ref=f2e39]: "0"
+  - status [ref=f2e40]
+  - status [ref=f2e41]

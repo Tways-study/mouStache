@@ -1,0 +1,175 @@
+/* Stash design tokens — Apple-premium. Light by default, dark via prefers-color-scheme. */
+:root {
+  color-scheme: light dark;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+
+  /* surfaces */
+  --bg: #f5f5f7;
+  --bg-elevated: #ffffff;
+  --bg-translucent: rgba(255, 255, 255, 0.72); /* use with backdrop-filter: blur(24px) saturate(180%) */
+  --bg-hover: rgba(60, 60, 67, 0.06);
+  --bg-active: rgba(60, 60, 67, 0.12);
+
+  /* labels */
+  --label-primary: rgba(0, 0, 0, 0.85);
+  --label-secondary: rgba(60, 60, 67, 0.8); /* >= 5:1 on --bg and --bg-elevated (WCAG AA at 11-13px) */
+  --label-tertiary: rgba(60, 60, 67, 0.72); /* >= 4.5:1 */
+
+  --separator: rgba(60, 60, 67, 0.12);
+
+  /* accent */
+  --accent: #007aff;
+  --accent-soft: rgba(0, 122, 255, 0.12);
+  --accent-contrast: #ffffff;
+
+  /* tag hues + soft backgrounds */
+  --tag-code: #5856d6;
+  --tag-code-soft: rgba(88, 86, 214, 0.12);
+  --tag-prompt: #af52de;
+  --tag-prompt-soft: rgba(175, 82, 222, 0.12);
+  --tag-image: #e0457b;
+  --tag-image-soft: rgba(224, 69, 123, 0.12);
+  --tag-link: #007aff;
+  --tag-link-soft: rgba(0, 122, 255, 0.12);
+  --tag-network: #1f9e9a;
+  --tag-network-soft: rgba(31, 158, 154, 0.12);
+  --tag-error: #e5382e;
+  --tag-error-soft: rgba(229, 56, 46, 0.12);
+  --tag-data: #e07b00;
+  --tag-data-soft: rgba(224, 123, 0, 0.12);
+  --tag-other: #6e6e73;
+  --tag-other-soft: rgba(110, 110, 115, 0.12);
+
+  /* radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* shadows (subtle, layered) */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08), 0 24px 56px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+
+  /* motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+}
+
+/* Theme override. `data-theme` goes on <html> in the side panel and on a wrapper inside the overlay's
+   shadow root (custom properties inherit, so no :root/:host selector is needed). Absent = follow the OS. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+      --bg: #1c1c1e;
+      --bg-elevated: #2c2c2e;
+      --bg-translucent: rgba(44, 44, 46, 0.72);
+      --bg-hover: rgba(235, 235, 245, 0.08);
+      --bg-active: rgba(235, 235, 245, 0.16);
+
+      --label-primary: rgba(255, 255, 255, 0.92);
+      --label-secondary: rgba(235, 235, 245, 0.7);
+      --label-tertiary: rgba(235, 235, 245, 0.6);
+
+      --separator: rgba(84, 84, 88, 0.55);
+
+      --accent: #0a84ff;
+      --accent-soft: rgba(10, 132, 255, 0.18);
+
+      --tag-code: #7d7aff;
+      --tag-code-soft: rgba(125, 122, 255, 0.18);
+      --tag-prompt: #bf5af2;
+      --tag-prompt-soft: rgba(191, 90, 242, 0.18);
+      --tag-image: #ff6b9d;
+      --tag-image-soft: rgba(255, 107, 157, 0.18);
+      --tag-link: #0a84ff;
+      --tag-link-soft: rgba(10, 132, 255, 0.18);
+      --tag-network: #40c8c0;
+      --tag-network-soft: rgba(64, 200, 192, 0.18);
+      --tag-error: #ff6961;
+      --tag-error-soft: rgba(255, 105, 97, 0.18);
+      --tag-data: #ff9f0a;
+      --tag-data-soft: rgba(255, 159, 10, 0.18);
+      --tag-other: #98989d;
+      --tag-other-soft: rgba(152, 152, 157, 0.18);
+
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+      --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+      --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.4), 0 24px 56px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  
+    color-scheme: dark;
+  }
+}
+[data-theme="dark"] {
+    --bg: #1c1c1e;
+    --bg-elevated: #2c2c2e;
+    --bg-translucent: rgba(44, 44, 46, 0.72);
+    --bg-hover: rgba(235, 235, 245, 0.08);
+    --bg-active: rgba(235, 235, 245, 0.16);
+
+    --label-primary: rgba(255, 255, 255, 0.92);
+    --label-secondary: rgba(235, 235, 245, 0.7);
+    --label-tertiary: rgba(235, 235, 245, 0.6);
+
+    --separator: rgba(84, 84, 88, 0.55);
+
+    --accent: #0a84ff;
+    --accent-soft: rgba(10, 132, 255, 0.18);
+
+    --tag-code: #7d7aff;
+    --tag-code-soft: rgba(125, 122, 255, 0.18);
+    --tag-prompt: #bf5af2;
+    --tag-prompt-soft: rgba(191, 90, 242, 0.18);
+    --tag-image: #ff6b9d;
+    --tag-image-soft: rgba(255, 107, 157, 0.18);
+    --tag-link: #0a84ff;
+    --tag-link-soft: rgba(10, 132, 255, 0.18);
+    --tag-network: #40c8c0;
+    --tag-network-soft: rgba(64, 200, 192, 0.18);
+    --tag-error: #ff6961;
+    --tag-error-soft: rgba(255, 105, 97, 0.18);
+    --tag-data: #ff9f0a;
+    --tag-data-soft: rgba(255, 159, 10, 0.18);
+    --tag-other: #98989d;
+    --tag-other-soft: rgba(152, 152, 157, 0.18);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.4), 0 24px 56px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  --bg: #f5f5f7;
+  --bg-elevated: #ffffff;
+  --bg-translucent: rgba(255, 255, 255, 0.72); /* use with backdrop-filter: blur(24px) saturate(180%) */
+  --bg-hover: rgba(60, 60, 67, 0.06);
+  --bg-active: rgba(60, 60, 67, 0.12);
+  --label-primary: rgba(0, 0, 0, 0.85);
+  --label-secondary: rgba(60, 60, 67, 0.8); /* >= 5:1 on --bg and --bg-elevated (WCAG AA at 11-13px) */
+  --label-tertiary: rgba(60, 60, 67, 0.72); /* >= 4.5:1 */
+  --separator: rgba(60, 60, 67, 0.12);
+  --accent: #007aff;
+  --accent-soft: rgba(0, 122, 255, 0.12);
+  --tag-code: #5856d6;
+  --tag-code-soft: rgba(88, 86, 214, 0.12);
+  --tag-prompt: #af52de;
+  --tag-prompt-soft: rgba(175, 82, 222, 0.12);
+  --tag-image: #e0457b;
+  --tag-image-soft: rgba(224, 69, 123, 0.12);
+  --tag-link: #007aff;
+  --tag-link-soft: rgba(0, 122, 255, 0.12);
+  --tag-network: #1f9e9a;
+  --tag-network-soft: rgba(31, 158, 154, 0.12);
+  --tag-error: #e5382e;
+  --tag-error-soft: rgba(229, 56, 46, 0.12);
+  --tag-data: #e07b00;
+  --tag-data-soft: rgba(224, 123, 0, 0.12);
+  --tag-other: #6e6e73;
+  --tag-other-soft: rgba(110, 110, 115, 0.12);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08), 0 24px 56px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  color-scheme: light;
+}

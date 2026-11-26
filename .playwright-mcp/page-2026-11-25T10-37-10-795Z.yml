@@ -1,0 +1,23 @@
+- generic [ref=f2e3]:
+  - generic [ref=f2e5]:
+    - banner [ref=f2e6]:
+      - generic [ref=f2e7]:
+        - generic [ref=f2e8]:
+          - heading "Stash" [level=1] [ref=f2e9]
+          - generic "0 items" [ref=f2e10]: ~/stash
+        - button "Add to Stash" [ref=f2e12]
+        - button "Settings" [ref=f2e15]
+      - generic [ref=f2e19]:
+        - textbox "Search your Stash" [ref=f2e23]:
+          - /placeholder: Search your Stash…
+        - generic [ref=f2e24]: /
+      - tablist "Filter by type" [ref=f2e25]:
+        - tab "All 0" [selected] [ref=f2e26]:
+          - text: All
+          - generic [ref=f2e27]: "0"
+        - tab "Pinned 0" [ref=f2e28]:
+          - text: Pinned
+          - generic [ref=f2e31]: "0"
+    - list "Saved items" [ref=f2e32]
+  - status [ref=f2e33]
+  - status [ref=f2e34]

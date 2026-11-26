@@ -1,0 +1,10 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "types": ["chrome"]
+  },
+  "exclude": ["node_modules", ".output", ".wxt"]
+}
