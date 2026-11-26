@@ -9,3 +9,15 @@ web-ext.config.ts
 playwright-report/
 test-results/
 desktop/out
+
+# AI agent / skill tooling (local state, caches, scratch output)
+.impeccable/
+.playwright-mcp/
+.claude/
+.agents/
+.cursor/
+.codex/
+.gemini/
+.superpowers/
+.gstack/
+graphify-out/
