@@ -79,12 +79,17 @@ export function createBlip(o: { getSettings(): PresenceSettings; isSuppressed():
       flags: { ignoreMouseEvents: true, focusable: win.isFocusable() },
       idle: () => scheduler.idle,
       shows: 0, // how many pills have been shown (tests assert a skipped copy never adds one)
+      notifies: 0, // how many captures asked for feedback at all (a coalesced update is not a new pill)
     };
   }
 
   return {
     win,
-    notify: scheduler.notify,
+    notify: (e: Parameters<typeof scheduler.notify>[0]) => {
+      const t = (globalThis as unknown as Record<string, { notifies?: number } | undefined>)['__mouBlip'];
+      if (t && o.exposeForTests) t.notifies = (t.notifies ?? 0) + 1;
+      return scheduler.notify(e);
+    },
     announce: scheduler.announce,
     get idle() {
       return scheduler.idle;

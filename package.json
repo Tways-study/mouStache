@@ -16,7 +16,12 @@
     "desktop:dev": "electron-vite dev --config desktop/electron.vite.config.ts",
     "desktop:build": "electron-vite build --config desktop/electron.vite.config.ts",
     "desktop:typecheck": "tsc --noEmit -p desktop/tsconfig.json",
-    "desktop:e2e": "npm run desktop:build && playwright test -c desktop/playwright.config.ts"
+    "desktop:e2e": "npm run desktop:build && playwright test -c desktop/playwright.config.ts",
+    "desktop:pack": "npm run desktop:build && electron-builder --dir",
+    "desktop:dist:win": "npm run desktop:build && electron-builder --win --x64",
+    "desktop:dist:mac": "npm run desktop:build && electron-builder --mac --arm64 --x64",
+    "desktop:screenshots": "node scripts/desktop-screenshots.mjs",
+    "desktop:e2e:packaged": "playwright test -c desktop/playwright.packaged.config.ts"
   },
   "dependencies": {
     "@shikijs/langs": "^4.6.0",

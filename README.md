@@ -41,7 +41,7 @@
 - [Develop and test](#develop-and-test)
 - [How it works](#how-it-works)
 - [Brand](#brand)
-- [Roadmap: desktop app](#roadmap-desktop-app)
+- [Desktop app](#desktop-app)
 
 ## Why mouStache
 
@@ -213,12 +213,45 @@ The mascot is just the moustache. It has no face and shows how it feels by movin
   <img src="docs/mascot-moods.svg" alt="The mouStache mascot: idle, happy and drooping" width="85%">
 </p>
 
-## Roadmap: desktop app
+## Desktop app
 
-A browser extension can't see copies made in VS Code, Cursor, a terminal or an LLM desktop app. A desktop version is planned so mouStache can keep one history across all of them:
+> **Status: in development, pre-release.** It is not on any store and there is no public download yet. You can build the installer yourself or take it from a CI run (see below). It has only been tested on Windows 11; the macOS build is written but **untested**.
 
-- capture the system clipboard, with password-manager and secret protection;
-- a global palette that pastes straight into the focused app;
-- the extension keeps working on its own and sends page context (source URL, site Copy buttons) to the desktop app.
+A browser extension can't see copies made in VS Code, Cursor, a terminal or an LLM desktop app. The desktop app (in [`desktop/`](desktop/README.md)) runs the same panel outside the browser and keeps one history across all of them.
 
-It is **not built yet**. See [docs/desktop-roadmap.md](docs/desktop-roadmap.md) for the plan and status.
+<p align="center">
+  <img src="docs/screenshots/desktop-panel.png" alt="The mouStache desktop panel with a made-up history" width="31%">
+  <img src="docs/screenshots/desktop-palette.png" alt="The quick palette over another app" width="62%">
+</p>
+
+**What it adds**
+
+- **System clipboard capture** for every app, with the same classification, tags and search. It never saves password-manager entries, secrets (API keys, tokens), text over 500 KB, its own clipboard writes, or copies made while a paused app (1Password, Bitwarden, KeePass, LastPass, Dashlane by default) is in front.
+- **Tray icon** with a state that shows idle, just-captured, paused or needs-attention, a tooltip with the item count, and a menu (Open, Pause, Quick palette, Region screenshot, Settings, Launch at login, Quit). A small `Saved · SQL` pill (never the copied text) appears in a screen corner; choose Off, Tray only or Blip in Settings > Presence.
+- **Quick palette on `Alt+Shift+V`** over whatever you are doing. `Enter` pastes into the app you came from, `Shift+Enter` only copies, `Ctrl+Enter` pastes as a fenced code block.
+- **Region screenshot on `Alt+Shift+S`**: drag a region and it is saved as an image item. Both shortcuts can be changed in Settings > Desktop.
+- **Pairing with the extension** (optional): in the app open Settings > Browser extension and copy the token; in the extension open Settings > Desktop app, turn it on and paste it. Copies made on web pages then reach the app together with the page they came from.
+
+<p align="center">
+  <img src="docs/screenshots/desktop-settings-presence.png" alt="Settings, Presence group" width="31%">
+  <img src="docs/screenshots/desktop-settings-extension.png" alt="Settings, Browser extension pairing (token masked)" width="31%">
+  <img src="docs/screenshots/desktop-blip.png" alt="The Saved pill" width="31%">
+</p>
+
+**Install from a build artifact**
+
+- **Windows:** run `npm install` then `npm run desktop:dist:win`, or download the `mouStache-windows` artifact from a run of the *Desktop* GitHub Actions workflow. Run `mouStache-Setup-<version>.exe` (per-user install, no admin needed, you can pick the folder). The installer is **unsigned**, so Windows SmartScreen will show "Windows protected your PC": choose *More info*, then *Run anyway* only if you built or downloaded it yourself.
+- **macOS:** the workflow builds `.dmg` and `.zip` for Apple Silicon and Intel, **unsigned and not notarized** unless the maintainer adds Apple credentials. Gatekeeper will refuse to open it at first (right-click, *Open*). Untested on a real Mac.
+- Moving history over: in the extension use Settings > Export JSON, then in the desktop app Settings > Import JSON.
+
+**Privacy.** Everything stays on your computer. The app makes no network requests. The only network listener is the extension bridge, bound to `127.0.0.1` (default port 47821). It answers only requests that carry your token and come from the extension. The extension sends nothing to it until you turn it on and paste the token.
+
+**Limits you should know about**
+
+- **macOS is untested.** The code exists (tray template icons, `osascript` paste, Accessibility permission flow, Screen Recording for screenshots) but nobody has run it on a Mac yet.
+- **Windows:** paste cannot type into windows running as administrator (Windows blocks it); the item is still copied. Windows may refuse to give focus back to the previous app in rare cases.
+- **Builds are unsigned**, there is no auto-update, and nothing is on a store.
+- Fullscreen and Do Not Disturb are not detected (pick Tray only if the pill gets in the way). Copying the exact same text twice in a row is not seen as a new copy.
+- Not yet verified by real use: pasting into Cursor, VS Code and terminals, and a real Chrome profile talking to an installed app.
+
+Build and release details: [desktop/README.md](desktop/README.md). Plan and status: [docs/desktop-roadmap.md](docs/desktop-roadmap.md).

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { BlipDuration, BlipMode, BlipPosition, CleanupDays, Density, ReduceMotion, Settings, TextSize, ThemeSetting } from '@/lib/types';
-import { desktopBridge, isDesktopApp } from '@/lib/panel/desktop';
+import { desktopBridge, isDesktopApp, type BridgeInfo } from '@/lib/panel/desktop';
+import { BRIDGE_DEFAULT_PORT } from '@/lib/bridge';
+import { pingBridge, statusText, validPort, type BridgeStatus } from '@/lib/bridge-client';
 import { isMac } from '@/lib/platform';
 import { acceleratorFromKeyEvent, validateAccelerator } from '@/lib/accelerator';
 import { Sheet } from '@/components/shared/Sheet';
@@ -226,12 +228,18 @@ function ConfirmRow({
 export function SettingsSheet({ open, onClose, settings, onToast }: Props) {
   const [host, setHost] = useState<string>();
   const [hostInput, setHostInput] = useState('');
-  const [confirm, setConfirm] = useState<'history' | 'all' | 'shots' | null>(null);
+  const [confirm, setConfirm] = useState<'history' | 'all' | 'shots' | 'token' | null>(null);
   const [usage, setUsage] = useState<{ count: number; bytes?: number }>();
   const [oldShots, setOldShots] = useState(0);
   const desktop = isDesktopApp();
   const [login, setLogin] = useState(false);
   const [appInput, setAppInput] = useState('');
+  // desktop app: extension bridge status + token. extension: the pairing fields and the connection test
+  const [bridgeInfo, setBridgeInfo] = useState<BridgeInfo>();
+  const [showToken, setShowToken] = useState(false);
+  const [tokenInput, setTokenInput] = useState('');
+  const [portInput, setPortInput] = useState('');
+  const [test, setTest] = useState<BridgeStatus | 'testing'>();
   const [hotkeys, setHotkeys] = useState<{ palette: HotkeyEntryStatus; screenshot: HotkeyEntryStatus }>();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -245,7 +253,46 @@ export function SettingsSheet({ open, onClose, settings, onToast }: Props) {
     void countOldImages().then(setOldShots).catch(() => undefined);
     void desktopBridge()?.getLoginItem().then(setLogin).catch(() => undefined);
     void desktopBridge()?.getHotkeyStatus().then(setHotkeys).catch(() => undefined);
+    void desktopBridge()?.getBridgeInfo().then(setBridgeInfo).catch(() => undefined);
+    setShowToken(false);
+    setTest(undefined);
   }, [open]);
+
+  // extension: keep the editable fields in step with what is stored
+  useEffect(() => {
+    setTokenInput(settings.bridgeToken);
+    setPortInput(String(settings.bridgePort));
+  }, [settings.bridgeToken, settings.bridgePort]);
+
+  const refreshBridge = () => void desktopBridge()?.getBridgeInfo().then(setBridgeInfo).catch(() => undefined);
+  const copyToken = async () => {
+    if (!bridgeInfo) return;
+    try {
+      await navigator.clipboard.writeText(bridgeInfo.token);
+      onToast('Pairing token copied');
+    } catch {
+      onToast('Could not copy the token', 'error');
+    }
+  };
+  const regenerate = async () => {
+    setConfirm(null);
+    const next = await desktopBridge()?.regenerateBridgeToken();
+    if (next) setBridgeInfo(next);
+    onToast('New token created. The old one no longer works.');
+  };
+  const commitPort = () => {
+    const n = Number(portInput);
+    if (!validPort(n)) return setPortInput(String(settings.bridgePort));
+    if (n !== settings.bridgePort) {
+      set({ bridgePort: n });
+      if (desktop) setTimeout(refreshBridge, 900); // the app re-binds when the setting arrives
+    }
+  };
+  const runTest = async () => {
+    setTest('testing');
+    const r = await pingBridge({ port: settings.bridgePort, token: settings.bridgeToken });
+    setTest(r.status);
+  };
 
   /** Save a shortcut, then ask the main process how registering it went (it re-registers on every change). */
   const setHotkey = (p: Partial<Settings>) => {
@@ -424,6 +471,106 @@ export function SettingsSheet({ open, onClose, settings, onToast }: Props) {
               </div>
             </Group>
           </>
+        )}
+
+        {desktop && (
+          <Group
+            title="Browser extension"
+            note="Lets the mouStache browser extension send the page a copy came from (URL, title) to this app. Everything stays on this computer: the app only listens on 127.0.0.1 and only accepts the token below."
+          >
+            <Row
+              label="Status"
+              hint={
+                bridgeInfo?.status === 'listening'
+                  ? `Listening on 127.0.0.1:${bridgeInfo.port}`
+                  : bridgeInfo?.error ?? 'Starting…'
+              }
+            >
+              <span className={`size-2.5 shrink-0 rounded-full ${bridgeInfo?.status === 'listening' ? 'bg-[#34c759]' : bridgeInfo ? 'bg-tag-error' : 'bg-active'}`} aria-hidden="true" />
+            </Row>
+            <Field label="Port" hint={bridgeInfo && bridgeInfo.port !== undefined && bridgeInfo.port !== settings.bridgePort ? `Using ${bridgeInfo.port} (${settings.bridgePort} was taken)` : undefined}>
+              <input
+                inputMode="numeric"
+                value={portInput}
+                aria-label="Bridge port"
+                onChange={(e) => setPortInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                onBlur={commitPort}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                className="h-8 w-28 rounded-lg bg-hover px-2.5 font-mono text-[12px] outline-none focus:shadow-[0_0_0_2px_var(--accent)]"
+              />
+            </Field>
+            <Field label="Pairing token">
+              <div className="flex items-center gap-2">
+                <code data-testid="bridge-token" className="min-w-0 flex-1 truncate rounded-lg bg-hover px-2.5 py-1.5 font-mono text-[12px]">
+                  {bridgeInfo ? (showToken ? bridgeInfo.token : '•'.repeat(24)) : '…'}
+                </code>
+                <button type="button" onClick={() => setShowToken((v) => !v)} className="h-8 rounded-lg bg-hover px-2.5 text-[12px] font-medium hover:bg-active">
+                  {showToken ? 'Hide' : 'Show'}
+                </button>
+                <button type="button" onClick={() => void copyToken()} disabled={!bridgeInfo} className="h-8 rounded-lg bg-hover px-2.5 text-[12px] font-medium hover:bg-active disabled:opacity-60">
+                  Copy
+                </button>
+              </div>
+            </Field>
+            {confirm === 'token' ? (
+              <ConfirmRow
+                text="Create a new token? The extension stops sending until you paste the new one."
+                confirmLabel="New token"
+                onCancel={() => setConfirm(null)}
+                onConfirm={() => void regenerate()}
+              />
+            ) : (
+              <button type="button" onClick={() => setConfirm('token')} className="flex h-11 w-full items-center px-3.5 text-left text-[13px] hover:bg-hover">
+                Regenerate token
+              </button>
+            )}
+            <div className="px-3.5 py-2.5 text-[12px] leading-[18px] text-label-secondary">
+              In the extension open Settings, find <b>Desktop app</b>, turn it on, paste this token, then press Test connection.
+            </div>
+          </Group>
+        )}
+
+        {!desktop && (
+          <Group
+            title="Desktop app"
+            note="Optional. Pair with the mouStache desktop app so copies you make in the browser also reach it, with the page they came from. Secrets and paused sites are never sent. Nothing leaves this computer."
+          >
+            <Row label="Send copies to the desktop app" hint="Off until you pair it">
+              <Switch label="Send copies to the desktop app" checked={settings.bridgeEnabled} onChange={(v) => set({ bridgeEnabled: v })} />
+            </Row>
+            <Field label="Pairing token" hint="From the desktop app: Settings > Browser extension">
+              <input
+                type="password"
+                autoComplete="off"
+                spellCheck={false}
+                value={tokenInput}
+                aria-label="Desktop app pairing token"
+                onChange={(e) => setTokenInput(e.target.value)}
+                onBlur={() => tokenInput.trim() !== settings.bridgeToken && set({ bridgeToken: tokenInput.trim() })}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                className="h-8 w-full rounded-lg bg-hover px-2.5 font-mono text-[12px] outline-none focus:shadow-[0_0_0_2px_var(--accent)]"
+              />
+            </Field>
+            <Field label="Port" hint={`Default ${BRIDGE_DEFAULT_PORT}`}>
+              <input
+                inputMode="numeric"
+                value={portInput}
+                aria-label="Desktop app port"
+                onChange={(e) => setPortInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                onBlur={commitPort}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                className="h-8 w-28 rounded-lg bg-hover px-2.5 font-mono text-[12px] outline-none focus:shadow-[0_0_0_2px_var(--accent)]"
+              />
+            </Field>
+            <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+              <div className="min-w-0 text-[12.5px] leading-5" role="status" aria-live="polite" data-testid="bridge-status">
+                {test === 'testing' ? 'Testing…' : test ? <span className={test === 'connected' ? 'text-[#248a3d]' : 'text-tag-error'}>{statusText[test]}</span> : <span className="text-label-secondary">Not tested yet</span>}
+              </div>
+              <button type="button" onClick={() => void runTest()} disabled={test === 'testing'} className="h-8 shrink-0 rounded-lg bg-hover px-3 text-[12px] font-medium hover:bg-active disabled:opacity-60">
+                Test connection
+              </button>
+            </div>
+          </Group>
         )}
 
         <Group title="Capture">

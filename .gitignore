@@ -21,3 +21,6 @@ desktop/out
 .superpowers/
 .gstack/
 graphify-out/
+
+# electron-builder output
+release/

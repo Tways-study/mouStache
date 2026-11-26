@@ -204,3 +204,38 @@ for (const state of Object.keys(TRAY_SHAPES)) {
   }
 }
 console.log('tray glyphs written');
+
+// ───────── packaging icons (desktop/build): icon.ico (Windows), icon.icns (macOS), icon.png (512) ─────────
+// Pure Node, no tools. Both containers embed PNG images, which every supported Windows and macOS version reads.
+const png = Object.fromEntries([16, 32, 48, 64, 128, 256, 512].map((s) => [s, render(s)]));
+
+// ICO: ICONDIR + one ICONDIRENTRY per image, then the PNG payloads (size byte 0 means 256).
+const icoSizes = [16, 32, 48, 64, 128, 256];
+const icoHead = Buffer.alloc(6);
+icoHead.writeUInt16LE(1, 2); // type = icon
+icoHead.writeUInt16LE(icoSizes.length, 4);
+let icoOffset = 6 + 16 * icoSizes.length;
+const icoDir = icoSizes.map((s) => {
+  const e = Buffer.alloc(16);
+  e[0] = s === 256 ? 0 : s; e[1] = s === 256 ? 0 : s;
+  e.writeUInt16LE(1, 4); e.writeUInt16LE(32, 6); // planes, bpp
+  e.writeUInt32LE(png[s].length, 8); e.writeUInt32LE(icoOffset, 12);
+  icoOffset += png[s].length;
+  return e;
+});
+
+// ICNS: 'icns' + total length, then [type, length, PNG] elements. 16/32/128/256/512 plus retina duplicates.
+const icnsTypes = [['icp4', 16], ['icp5', 32], ['ic11', 32], ['ic12', 64], ['ic07', 128], ['ic13', 256], ['ic08', 256], ['ic09', 512]];
+const icnsBody = Buffer.concat(icnsTypes.map(([t, s]) => {
+  const h = Buffer.alloc(8);
+  h.write(t, 0, 'ascii'); h.writeUInt32BE(8 + png[s].length, 4);
+  return Buffer.concat([h, png[s]]);
+}));
+const icnsHead = Buffer.alloc(8);
+icnsHead.write('icns', 0, 'ascii'); icnsHead.writeUInt32BE(8 + icnsBody.length, 4);
+
+mkdirSync('desktop/build', { recursive: true });
+writeFileSync('desktop/build/icon.ico', Buffer.concat([icoHead, ...icoDir, ...icoSizes.map((s) => png[s])]));
+writeFileSync('desktop/build/icon.icns', Buffer.concat([icnsHead, icnsBody]));
+writeFileSync('desktop/build/icon.png', png[512]);
+console.log('packaging icons written (desktop/build)');

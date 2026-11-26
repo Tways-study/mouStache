@@ -1,5 +1,6 @@
 import { test as base, chromium, expect, type BrowserContext, type Page, type Worker } from '@playwright/test';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createServer, type IncomingMessage } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -300,6 +301,81 @@ test('settings: theme switches live, and Export JSON downloads a valid mouStache
   expect(file.items.length).toBeGreaterThanOrEqual(3);
   expect(JSON.stringify(file)).not.toContain('AKIA');
   await panel.close();
+});
+
+test('desktop bridge: when paired, a page copy is forwarded to 127.0.0.1 (token, stripped URL, never a secret) and Test connection reports the status', async ({ ctx, sw, extId }) => {
+  const TOKEN = 'e2e-bridge-token-0123456789abcdefghijklmnopqrstuv';
+  const seen: { method: string; url: string; auth?: string; origin?: string; host?: string; body: string }[] = [];
+  const stub = createServer((req: IncomingMessage, res) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (c: Buffer) => chunks.push(c));
+    req.on('end', () => {
+      seen.push({ method: req.method ?? '', url: req.url ?? '', auth: req.headers.authorization, origin: req.headers.origin, host: req.headers.host, body: Buffer.concat(chunks).toString('utf8') });
+      const authed = req.headers.authorization === `Bearer ${TOKEN}`;
+      res.setHeader('Content-Type', 'application/json');
+      if (!authed) { res.statusCode = 401; return void res.end('{"ok":false,"error":"unauthorized"}'); }
+      res.end(req.url === '/v1/ping' ? '{"ok":true,"app":"mouStache","version":"0.0.0-stub"}' : '{"ok":true,"id":"stub"}');
+    });
+  });
+  await new Promise<void>((r) => stub.listen(0, '127.0.0.1', r));
+  const port = (stub.address() as { port: number }).port;
+  const captures = () => seen.filter((r) => r.method === 'POST' && r.url === '/v1/capture').map((r) => ({ ...r, json: JSON.parse(r.body) }));
+  const setBridge = (patch: object) =>
+    sw.evaluate(async (p) => {
+      const cur = (await chrome.storage.local.get('stash:settings'))['stash:settings'] ?? {};
+      await chrome.storage.local.set({ 'stash:settings': { ...cur, ...p } });
+    }, patch);
+
+  try {
+    // 1. bridge off (the default): copying forwards nothing
+    const page = await openSite(ctx);
+    await copyParagraph(page, 'pw');
+    await expect.poll(async () => hasText(await dbItems(sw), 'correct-horse-battery-staple')).toBe(true);
+    await page.waitForTimeout(500);
+    expect(seen).toEqual([]);
+
+    // 2. paired: a normal copy is forwarded with the token and the page source, minus query/hash
+    await setBridge({ bridgeEnabled: true, bridgeToken: TOKEN, bridgePort: port });
+    await page.waitForTimeout(1200); // past the content script's identical-text window
+    await copyParagraph(page, 'ping');
+    await expect.poll(() => captures().some((c) => c.json.text === PING)).toBe(true);
+    const sent = captures().find((c) => c.json.text === PING)!;
+    expect(sent.auth).toBe(`Bearer ${TOKEN}`);
+    expect(sent.origin).toMatch(/^chrome-extension:\/\/[a-p]{32}$/);
+    expect(sent.host).toBe(`127.0.0.1:${port}`);
+    expect(sent.json).toMatchObject({ kind: 'text', text: PING, via: 'copy', source: { url: `${SITE}/` } });
+    expect(sent.body).not.toContain('?');
+
+    // 3. a secret is skipped locally and therefore never forwarded; the pipeline keeps going afterwards
+    await page.waitForTimeout(1200);
+    await copyParagraph(page, 'aws');
+    await page.waitForTimeout(1200);
+    await copyParagraph(page, 'sql'); // marker: proves forwarding kept working after the secret
+    await expect.poll(() => captures().some((c) => c.json.text === SQL)).toBe(true);
+    expect(seen.map((r) => r.body).join('\n')).not.toContain(AWS_KEY);
+    expect(seen.map((r) => r.body).join('\n')).not.toContain('AKIA');
+    await page.close();
+
+    // 4. Settings > Desktop app: Test connection says Connected / Wrong token / Not running
+    const panel = await openPanel(ctx, extId);
+    await panel.getByRole('button', { name: 'Settings' }).click();
+    const status = panel.getByTestId('bridge-status');
+    await panel.getByRole('button', { name: 'Test connection' }).click();
+    await expect(status).toHaveText('Connected');
+    await panel.getByLabel('Desktop app pairing token').fill('definitely-the-wrong-token-xxxxxxxxxxxxxxxxxx');
+    await panel.getByLabel('Desktop app pairing token').blur();
+    await panel.getByRole('button', { name: 'Test connection' }).click();
+    await expect(status).toContainText('Wrong token');
+    await panel.getByLabel('Desktop app pairing token').fill(TOKEN);
+    await panel.getByLabel('Desktop app pairing token').blur();
+    await new Promise<void>((r) => stub.close(() => r())); // the desktop app "quits"
+    await panel.getByRole('button', { name: 'Test connection' }).click();
+    await expect(status).toContainText('Not running');
+    await panel.close();
+  } finally {
+    await setBridge({ bridgeEnabled: false, bridgeToken: '' });
+    if (stub.listening) await new Promise<void>((r) => stub.close(() => r()));
+  }
 });
 
 test('no uncaught errors were thrown anywhere during the run', async ({ errors }) => {

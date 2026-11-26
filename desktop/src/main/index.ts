@@ -5,6 +5,8 @@ import { extname, join, normalize, sep } from 'node:path';
 import { CH, type DesktopStats, type EngineReply } from '../shared/api';
 import { createBlip, type BlipController } from './blip';
 import type { CaptureOutcome } from './capture';
+import { createBridge, type BridgeController } from './bridge';
+import { createRecentIds, wantsFeedback } from './feedback';
 import { createFakeClipboard } from './fake-clipboard';
 import { createHotkeys, type Hotkeys } from './hotkeys';
 import { createPalette, type PaletteController } from './palette';
@@ -37,6 +39,8 @@ let watcher: WatcherController | undefined;
 let palette: PaletteController | undefined;
 let region: RegionController | undefined;
 let hotkeys: Hotkeys | undefined;
+let bridge: BridgeController | undefined;
+const recentIds = createRecentIds();
 
 const engine = createEngineClient((id, msg) => engineWin?.webContents.send(CH.engineRequest, { id, msg }));
 const presence = createPresenceStore();
@@ -127,9 +131,21 @@ function onOutcome(o: CaptureOutcome): void {
   tray?.setAttention(false);
   // Skipped copies (secrets, paused apps, concealed, own app) produce NO feedback at all.
   if (o.status !== 'saved') return;
+  giveFeedback(o, 'watcher');
+}
+
+/** Tray curl + blip for a saved item, unless it is the same browser copy we were already told about. */
+function giveFeedback(o: Extract<CaptureOutcome, { status: 'saved' }>, source: 'watcher' | 'bridge'): void {
+  refreshStats();
+  if (!wantsFeedback(source, { id: o.id, deduped: o.deduped }, recentIds)) return;
   if (presence.get().blipMode !== 'off') tray?.flash();
   blip?.notify({ label: o.label, deduped: o.deduped });
-  refreshStats();
+}
+
+/** A capture that arrived over the extension bridge. Skipped ones (secret, paused) show nothing at all. */
+function onBridgeOutcome(o: CaptureOutcome): void {
+  if (E2E) outcomeLog.push(o.status === 'skipped' ? `bridge-skipped:${o.reason}` : o.status === 'saved' ? `bridge-saved:${o.deduped ? 'dup' : 'new'}` : 'bridge-error');
+  if (o.status === 'saved') giveFeedback(o, 'bridge');
 }
 
 function firstRunHint(): void {
@@ -206,6 +222,10 @@ function wireIpc(): void {
     if (fromWindow(e, region?.window)) region?.cancel();
   });
   ipcMain.handle(CH.hotkeyStatus, (e) => (trusted(e) ? hotkeys?.status() : undefined));
+  // the pairing token: only the panel window (where Settings lives) may ever ask for it
+  const fromPanel = (e: IpcMainInvokeEvent) => trusted(e) && !!panel && !panel.win.isDestroyed() && e.sender === panel.win.webContents;
+  ipcMain.handle(CH.bridgeInfo, (e) => (fromPanel(e) ? bridge?.info() : undefined));
+  ipcMain.handle(CH.bridgeRegenerate, (e) => (fromPanel(e) ? bridge?.regenerate() : undefined));
   ipcMain.handle(CH.getLogin, (e) => trusted(e) && app.getLoginItemSettings().openAtLogin);
   ipcMain.handle(CH.setLogin, (e, open: unknown) => {
     if (trusted(e) && typeof open === 'boolean') app.setLoginItemSettings({ openAtLogin: open, args: ['--hidden'] });
@@ -224,6 +244,7 @@ if (!app.requestSingleInstanceLock()) {
     quitting = true;
     watcher?.stop();
     hotkeys?.unregisterAll();
+    void bridge?.stop();
     pasteExecutor.dispose();
     detector.dispose();
   });
@@ -294,7 +315,19 @@ if (!app.requestSingleInstanceLock()) {
       screenshot: () => void region?.start(),
     });
 
+    // extension bridge: 127.0.0.1 only, token in userData; e2e may ask for a random free port
+    const portEnv = process.env['MOUSTACHE_BRIDGE_PORT'];
+    bridge = createBridge({
+      userData: app.getPath('userData'),
+      version: app.getVersion(),
+      engine,
+      presence,
+      onOutcome: onBridgeOutcome,
+      portOverride: E2E && portEnv !== undefined ? Number(portEnv) : undefined,
+    });
+
     presence.onChange((s, first) => {
+      if (first || (s.bridgePort !== bridge?.preferred && !(E2E && portEnv !== undefined))) void bridge?.start(s.bridgePort);
       hotkeys?.apply({ palette: s.hotkeyPalette, screenshot: s.hotkeyScreenshot });
       tray?.setPaused(!s.autoCapture);
       tray?.setShowCount(s.menuBarCount && process.platform === 'darwin');
@@ -315,6 +348,7 @@ if (!app.requestSingleInstanceLock()) {
       g['__mouForeground'] = foreground.set;
       g['__mouFake'] = fakeClipboard;
       g['__mouGS'] = shortcutStub;
+      g['__mouBridge'] = { port: () => bridge?.port };
       g['__mouHotkeyStatus'] = () => hotkeys?.status();
       g['__mouPalette'] = {
         open: () => palette?.open(),

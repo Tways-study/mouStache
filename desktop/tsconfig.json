@@ -17,5 +17,5 @@
     "types": ["chrome", "node", "vite/client", "electron-vite/node"],
     "paths": { "@/*": ["../*"] }
   },
-  "include": ["src", "electron.vite.config.ts", "playwright.config.ts", "../tests/desktop"]
+  "include": ["src", "electron.vite.config.ts", "playwright.config.ts", "playwright.packaged.config.ts","../tests/desktop"]
 }

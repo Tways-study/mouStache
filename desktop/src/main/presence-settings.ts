@@ -13,6 +13,7 @@ export type PresenceSettings = Pick<
   | 'reduceMotion'
   | 'hotkeyPalette'
   | 'hotkeyScreenshot'
+  | 'bridgePort'
 >;
 
 const pick = <T extends string>(v: unknown, allowed: readonly T[], fallback: T): T =>
@@ -30,6 +31,7 @@ export function parsePresence(raw: unknown): PresenceSettings {
     blipDuration: pick<BlipDuration>(o['blipDuration'], ['short', 'normal', 'long'], d.blipDuration),
     reduceMotion: pick<ReduceMotion>(o['reduceMotion'], ['system', 'on', 'off'], d.reduceMotion),
     // not validated here: the hotkey manager validates and reports a readable error
+    bridgePort: Number.isInteger(o['bridgePort']) && (o['bridgePort'] as number) >= 1024 && (o['bridgePort'] as number) <= 65535 ? (o['bridgePort'] as number) : d.bridgePort,
     hotkeyPalette: typeof o['hotkeyPalette'] === 'string' ? o['hotkeyPalette'].slice(0, 80) : d.hotkeyPalette,
     hotkeyScreenshot: typeof o['hotkeyScreenshot'] === 'string' ? o['hotkeyScreenshot'].slice(0, 80) : d.hotkeyScreenshot,
     pausedApps: Array.isArray(o['pausedApps'])

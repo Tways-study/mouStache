@@ -4,6 +4,7 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: '../tests/desktop',
   testMatch: '**/*.e2e.ts',
+  testIgnore: '**/packaged.e2e.ts', // needs a packaged build: npm run desktop:e2e:packaged
   timeout: 60_000,
   expect: { timeout: 10_000 },
   workers: 1,

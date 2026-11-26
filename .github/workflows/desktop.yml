@@ -1,0 +1,94 @@
+# Builds the mouStache Desktop installers. Nothing is published: artifacts are attached to the workflow run.
+# Triggers: a tag like desktop-v0.1.0, or run it by hand from the Actions tab.
+# macOS signing and notarization only happen when the Apple secrets exist; otherwise the build is unsigned.
+name: Desktop
+
+on:
+  push:
+    tags: ['desktop-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Windows only: the Electron e2e suite drives real windows; there is no virtual display set up for macOS here.
+      - name: Desktop e2e (built app)
+        if: runner.os == 'Windows'
+        run: npm run desktop:e2e
+
+      - name: Build Windows installer (NSIS, unsigned)
+        if: runner.os == 'Windows'
+        run: npm run desktop:dist:win
+
+      - name: Smoke test the packaged Windows app
+        if: runner.os == 'Windows'
+        run: npm run desktop:e2e:packaged
+
+      # macOS builds both arm64 and x64. Signing + notarization need all of these secrets; without them the step
+      # builds unsigned dmg and zip files (Gatekeeper will warn on them). No secret is written to the log or the repo.
+      - name: Build macOS dmg and zip (signed and notarized only if secrets exist)
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$CSC_LINK" ] && [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            echo "Apple signing secrets found: signing and notarizing."
+            npm run desktop:dist:mac -- -c.mac.notarize=true
+          else
+            echo "No Apple signing secrets: building UNSIGNED macOS artifacts."
+            unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            npm run desktop:dist:mac
+          fi
+
+      - name: Upload Windows installer
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mouStache-windows
+          path: release/mouStache-Setup-*.exe
+          if-no-files-found: error
+
+      - name: Upload macOS artifacts
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mouStache-macos
+          path: |
+            release/*.dmg
+            release/*.zip
+          if-no-files-found: error

@@ -1,11 +1,23 @@
 /** Detection + typed access to the desktop app's bridge. Everything is a no-op in the extension. */
 
+export interface BridgeInfo {
+  status: 'listening' | 'error';
+  port?: number;
+  preferredPort: number;
+  error?: string;
+  token: string;
+  version: string;
+}
+
 export const DESKTOP_RUNTIME_ID = 'mou-stache-desktop';
 
 /** Desktop OS integration exposed by the Electron preload as `window.mouDesktop`. */
 export interface DesktopBridge {
   getLoginItem(): Promise<boolean>;
   setLoginItem(open: boolean): Promise<void>;
+  /** Extension bridge status and pairing token (only the panel window gets an answer). */
+  getBridgeInfo(): Promise<BridgeInfo | undefined>;
+  regenerateBridgeToken(): Promise<BridgeInfo | undefined>;
   /** Result of the last attempt to register the global shortcuts (Settings shows the error, if any). */
   getHotkeyStatus(): Promise<{
     palette: { requested: string; active?: string; ok: boolean; error?: string };

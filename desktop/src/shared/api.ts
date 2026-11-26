@@ -35,7 +35,20 @@ export const CH = {
   regionDone: 'region:done',
   regionCancel: 'region:cancel',
   hotkeyStatus: 'desktop:hotkey-status',
+  /** panel window only (Settings): bridge status + pairing token */
+  bridgeInfo: 'bridge:info',
+  bridgeRegenerate: 'bridge:regenerate',
 } as const;
+
+/** What Settings shows for the extension bridge. The token only ever goes to the panel window. */
+export interface BridgeInfoDto {
+  status: 'listening' | 'error';
+  port?: number;
+  preferredPort: number;
+  error?: string;
+  token: string;
+  version: string;
+}
 
 export interface PaletteChooseRequest {
   id: string;
@@ -112,6 +125,9 @@ export interface DesktopApi {
   regionDone(dataUrl: string): void;
   regionCancel(): void;
   getHotkeyStatus(): Promise<HotkeyStatusDto>;
+  /** Panel window only. */
+  getBridgeInfo(): Promise<BridgeInfoDto | undefined>;
+  regenerateBridgeToken(): Promise<BridgeInfoDto | undefined>;
 }
 
 declare global {

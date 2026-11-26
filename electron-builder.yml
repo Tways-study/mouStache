@@ -1,0 +1,73 @@
+# mouStache Desktop packaging. Run through the npm scripts (desktop:pack, desktop:dist:win, desktop:dist:mac).
+# The version comes from package.json. Builds are UNSIGNED unless signing env vars are set (see desktop/README.md).
+appId: com.moustache.desktop
+productName: mouStache
+copyright: Copyright (c) mouStache contributors
+asar: true
+compression: normal
+
+directories:
+  output: release
+  buildResources: desktop/build
+
+# Ship only what the app needs. Main, preload and renderers are bundled by electron-vite into desktop/out, so no
+# node_modules go into the package (react, dexie and shiki are compiled into the renderer bundles).
+# desktop/resources/tray is read from disk at runtime by desktop/src/main/tray.ts.
+# No auto-update: nothing is published, so no latest.yml / app-update.yml feed is generated.
+publish: null
+
+files:
+  - package.json
+  - desktop/out/**
+  - desktop/resources/**
+  - "!**/*.map"
+  - "!**/*.test.*"
+  - "!**/node_modules/**"
+
+artifactName: mouStache-${os}-${arch}-${version}.${ext}
+
+win:
+  target:
+    - target: nsis
+      arch: x64
+  icon: desktop/build/icon.ico
+  # No code signing by default. Set CSC_LINK + CSC_KEY_PASSWORD to sign (SmartScreen will warn on unsigned installers).
+
+nsis:
+  oneClick: false
+  perMachine: false # per-user install, no admin prompt
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: mouStache
+  uninstallDisplayName: mouStache
+  deleteAppDataOnUninstall: false # keep the user's clipboard history on uninstall or reinstall
+  artifactName: mouStache-Setup-${version}.${ext}
+
+mac:
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  icon: desktop/build/icon.icns
+  category: public.app-category.productivity
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: desktop/build/entitlements.mac.plist
+  entitlementsInherit: desktop/build/entitlements.mac.inherit.plist
+  # Notarization is OFF by default so unsigned builds work. The CI workflow turns it on with
+  # `-c.mac.notarize=true` only when the Apple secrets exist. Signing needs CSC_LINK / CSC_KEY_PASSWORD.
+  notarize: false
+  extendInfo:
+    # Tray-only app: no Dock icon and no Cmd+Tab entry. The panel and palette still open and take focus.
+    # (Decision made without a Mac to test on. Remove this key to get a normal Dock icon.)
+    LSUIElement: true
+    # Paste sends Cmd+V to the previous app through System Events (osascript), which triggers the Automation prompt.
+    NSAppleEventsUsageDescription: mouStache pastes the item you pick into the app you were using by sending it a Cmd+V keystroke through System Events.
+    # Deliberately NOT set: NSScreenCaptureUsageDescription (macOS shows its own Screen Recording prompt for the
+    # region screenshot; there is no Info.plist string for it), and no Accessibility key (it has none either).
+
+dmg:
+  title: mouStache ${version}
+  artifactName: mouStache-${version}-${arch}.${ext}
