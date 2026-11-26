@@ -9,7 +9,7 @@
 <h1 align="center">mouStache</h1>
 
 <p align="center">
-  <b>A clipboard manager for IT students, built as a Chrome / Edge side panel.</b><br>
+  <b>A clipboard manager for IT students: a Chrome / Edge side panel and a desktop app.</b><br>
   It saves what you copy, tags it automatically, previews code properly, and puts it back with one shortcut.
 </p>
 
@@ -17,7 +17,8 @@
   <img alt="Manifest V3" src="https://img.shields.io/badge/Chrome%20%2F%20Edge-Manifest%20V3-3458F0">
   <img alt="Local only" src="https://img.shields.io/badge/storage-local%20only-1FA34A">
   <img alt="React 18 and TypeScript" src="https://img.shields.io/badge/React%2018-TypeScript%20strict-5E5CE6">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-215%20unit%20%C2%B7%2013%20e2e-0A84FF">
+  <img alt="Desktop app" src="https://img.shields.io/badge/desktop-Windows%20%C2%B7%20macOS%20untested-8E8E93">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-665%20unit%20%C2%B7%2014%20%2B%2055%20e2e-0A84FF">
 </p>
 
 <p align="center">
@@ -37,11 +38,13 @@
 - [Built for long sessions](#built-for-long-sessions)
 - [Privacy and safety](#privacy-and-safety)
 - [Shortcuts](#shortcuts)
-- [Install](#install)
+- [Install](#install): [extension](#browser-extension), [desktop app](#desktop-app-windows), [pairing them](#pair-the-extension-with-the-desktop-app)
+- [Uninstall and your data](#uninstall-and-your-data)
+- [Troubleshooting](#troubleshooting)
+- [Desktop app](#desktop-app)
 - [Develop and test](#develop-and-test)
 - [How it works](#how-it-works)
 - [Brand](#brand)
-- [Desktop app](#desktop-app)
 
 ## Why mouStache
 
@@ -132,30 +135,133 @@ Hints adapt to your platform automatically, so macOS shows ⌘ ⌥ ⇧ instead o
 
 ## Install
 
-mouStache is not on the Chrome Web Store yet, so load it unpacked:
+mouStache comes in two parts that work on their own or together:
 
-1. `npm install` then `npm run build`
+| Part | Captures copies from | Platforms |
+| --- | --- | --- |
+| **Browser extension** | web pages in Chrome and Edge | Windows, macOS, Linux (Chrome / Edge 116 or newer) |
+| **Desktop app** | every app: VS Code, Cursor, terminals, chat apps | Windows (tested); macOS (written, **untested**) |
+
+Neither is on a store yet, so you build them from source (the desktop installer can also come from a CI run). Safari and Firefox are not supported.
+
+### Before you start
+
+You need [Git](https://git-scm.com/), and [Node.js](https://nodejs.org/) 24 with npm (the version development and CI use).
+
+```bash
+git clone https://github.com/Tways-study/mouStache.git
+cd mouStache
+npm install
+```
+
+### Browser extension
+
+1. Build it: `npm run build`
 2. Open `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
-3. Click **Load unpacked** and select `.output/chrome-mv3`.
-4. Pin mouStache from the puzzle-piece menu so the badge stays visible.
+3. Click **Load unpacked** and select the `.output/chrome-mv3` folder.
+4. Pin mouStache from the puzzle-piece menu so the toolbar badge stays visible.
+5. Check it works: open any web page, select some text and copy it. The badge shows **1**, and clicking the toolbar icon opens the side panel with your copy in it.
 
-Works in Chrome and Edge (116 or newer) on Windows, macOS and Linux. Safari and Firefox are not supported.
+**Update:** `git pull`, `npm install`, `npm run build`, then click the reload arrow on the mouStache card in `chrome://extensions`. Your history is kept. Reload any tabs that were already open so they pick up the new content script.
+
+A store-ready zip is one command away: `npm run zip`.
+
+### Desktop app (Windows)
+
+The app lives in the system tray, watches the system clipboard, and opens a global palette on `Alt+Shift+V`. Pick one of these ways to get it:
+
+| Way | Steps |
+| --- | --- |
+| **Build the installer** (recommended) | `npm run desktop:dist:win`, then run `release/mouStache-Setup-<version>.exe` (about 120 MB). |
+| **Take it from CI** | On GitHub open **Actions > Desktop**, choose **Run workflow** (or push a `desktop-v*` tag), then download the **mouStache-windows** artifact from the finished run. |
+| **Try it without installing** | `npm run desktop:pack`, then start `release/win-unpacked/mouStache.exe`. For development use `npm run desktop:dev`. |
+
+**Running the installer**
+
+- It installs per user, so **no administrator prompt**. You can choose the folder, and it adds Desktop and Start-menu shortcuts.
+- The installer is **unsigned**, so Windows SmartScreen shows "Windows protected your PC". Choose **More info**, then **Run anyway**, but only for a build you made or downloaded yourself.
+
+**First launch**
+
+1. mouStache starts in the tray. If you can't see the moustache icon, open the `^` overflow menu next to the clock and drag it onto the taskbar so it stays visible. A small pill points at it the first time.
+2. Copy text in any app. The tray icon curls for a moment and a small `Saved · SQL` pill appears in a screen corner (it never shows what you copied).
+3. Press `Alt+Shift+V` for the quick palette. Type to search, then press `Enter` to paste into the app you came from. `Shift+Enter` only copies, `Ctrl+Enter` pastes as a fenced code block.
+4. Click the tray icon to open the full panel. In **Settings > Desktop** you can turn on **Launch at login** and change the shortcuts, and **Settings > Presence** controls how noticeable the pill is.
+
+### Pair the extension with the desktop app
+
+Optional, and only needed if you want copies from web pages to arrive in the desktop app together with the page they came from.
+
+1. In the desktop app open **Settings > Browser extension** and copy the token (use **Show** if you want to see it).
+2. In the extension open **Settings > Desktop app**, turn it on and paste the token.
+3. Leave the port at `47821` unless the app says it is in use, then press **Test connection**. It should say **Connected**.
+
+The token never travels over the connection: the extension and the app prove to each other that they know it. Regenerating the token in the app stops the old one immediately.
+
+### Desktop app (macOS)
+
+The macOS build is written but **has never been run on a Mac**, so treat it as experimental.
+
+1. On a Mac run `npm run desktop:dist:mac`, or download the **mouStache-macos** artifact from the CI run (both Apple Silicon and Intel).
+2. The app is **unsigned and not notarized**, so Gatekeeper refuses it at first. Right-click the app and choose **Open**.
+3. It is a tray-only app (menu bar, no Dock icon). Allow **Accessibility** when asked, so paste into other apps works, and **Screen Recording** for region screenshots. Without Accessibility the item is only copied and you press `⌘V` yourself.
+4. Shortcuts use Option: `⌥⇧V` and `⌥⇧S`.
+
+If you try it on a Mac, please report what works and what doesn't.
+
+## Uninstall and your data
+
+Everything is stored on your computer only. Export first if you want to keep your history: **Settings > Export JSON** in the extension or the desktop app, and **Import JSON** to load it elsewhere. This is also how you move history from the extension to the desktop app.
+
+| | How to remove | What happens to your history |
+| --- | --- | --- |
+| **Extension** | Remove it on `chrome://extensions` | **Deleted** with the extension. Export first. |
+| **Desktop app (Windows)** | Settings > Apps > mouStache > Uninstall | **Kept** in `%APPDATA%\mouStache` so a reinstall finds it. Delete that folder to wipe it. |
+| **Desktop app (macOS)** | Drag the app to the Bin | Kept in `~/Library/Application Support/mouStache` (untested path). Delete it to wipe the history. |
+
+## Troubleshooting
+
+| Problem | Likely cause and fix |
+| --- | --- |
+| **Extension saves nothing from a page** | The site is on the paused list (**Settings**, default includes password managers and sign-in pages), or the text looks like a secret (skipped on purpose). If the tab was open before you installed or reloaded the extension, reload the tab. |
+| **A shortcut does nothing** | Another program or the browser owns that combination. Extension: change it at `chrome://extensions/shortcuts`. Desktop app: **Settings > Desktop** shows an error if the system refused it; pick another combination. |
+| **Desktop app doesn't save a copy** | Capture is paused (tray menu), the copy came from a paused app or a password manager (not saved on purpose), it looks like a secret, it is over 500 KB, or it was made while the mouStache panel was in front. Copying the exact same text twice in a row isn't seen as a new copy. |
+| **Palette picks the item but nothing is pasted** | Windows doesn't allow typing into windows running as administrator. The item is still on the clipboard, so press `Ctrl+V`. On a Mac, grant the Accessibility permission. |
+| **"Windows protected your PC"** | The installer is unsigned (no certificate yet). See [running the installer](#desktop-app-windows). |
+| **Settings shows the bridge port is in use** | Another program uses `47821`. Close it, or choose a different port in **both** the desktop app (**Settings > Browser extension**) and the extension (**Settings > Desktop app**). |
+| **Test connection says "Wrong token, or that port is not the mouStache app"** | The token was copied before it was regenerated, or something else listens on that port. Copy the current token from the app and paste it again. |
+| **The `Saved` pill is distracting** | **Settings > Presence**, choose **Tray only** or **Off**. |
+| **The tray icon is missing** | Windows hides new tray icons in the `^` overflow menu. Drag it out onto the taskbar. |
+| **A build fails** | Use Node.js 24, run `npm install` again, and on Windows run commands from a normal PowerShell in the repo folder. `npm run typecheck` and `npm test` should both pass before you build. |
 
 ## Develop and test
 
+Run everything from the repo root. On Windows use PowerShell with an **uppercase drive letter** (`D:\...`), because a lowercase `/d/...` path makes Vitest fail with "failed to find the runner".
+
 ```bash
+# extension
 npm run dev        # dev browser with the extension (HMR)
 npm run build      # production build -> .output/chrome-mv3
 npm run zip        # store-ready zip
-npm test           # unit tests (Vitest, fake-indexeddb)
-npm run typecheck
+npm test           # unit tests (Vitest, fake-indexeddb), includes the desktop unit tests
+npm run typecheck  # extension + desktop
 npm run e2e        # builds, then drives the real extension with Playwright
-npm run icons      # regenerates the toolbar icons
+npm run icons      # regenerates the extension icons, tray frames and installer icons
 node scripts/gen-brand.mjs   # regenerates docs/banner.svg and docs/mascot-moods.svg
+
+# desktop app
+npm run desktop:dev           # run the app with hot reload
+npm run desktop:e2e           # builds with test hooks, then runs the Electron end-to-end tests
+npm run desktop:pack          # release build as an unpacked app in release/
+npm run desktop:dist:win      # Windows installer in release/
+npm run desktop:e2e:packaged  # smoke-tests the packaged app
+npm run desktop:dist:mac      # macOS dmg + zip (run on a Mac or in CI)
 ```
 
-- **Unit tests** cover the classifier fixtures (about 110 real IT snippets), the database, import validation, the content-script helpers and the panel logic.
-- **End-to-end tests** load the built extension into Playwright's Chromium and check capture, the Copy-button hook, secrets, paused sites, forged events, search, pin and delete with undo, the palette, screenshots, theme switching and export. Set `HEADED=1` to watch. The first run needs `npx playwright install chromium`.
+- **Unit tests** (665) cover the classifier fixtures (about 110 real IT snippets), the database, import validation, the content-script helpers, the panel logic, and the desktop clipboard watcher, paste helpers and extension bridge.
+- **Extension end-to-end tests** (14) load the built extension into Playwright's Chromium and check capture, the Copy-button hook, secrets, paused sites, forged events, search, pin and delete with undo, the palette, screenshots, theme switching, export and the desktop bridge. Set `HEADED=1` to watch. The first run needs `npx playwright install chromium`.
+- **Desktop end-to-end tests** (55, plus 7 for the packaged app) launch the real Electron app with a fake clipboard, pinned foreground app and recorded (never sent) paste commands, so they never touch your real clipboard or type into your windows. They cover capture, secrets and password-manager skips, the tray and pill, the palette, hotkeys, region screenshots, the extension bridge and its security checks.
+- **Desktop builds:** `desktop:e2e` uses a *test* build that contains test-only hooks. Release builds (`desktop:pack`, `desktop:dist:*`) are checked to contain none of them. Details are in [desktop/README.md](desktop/README.md).
 - Preview without installing: `sidepanel.html?demo=1` seeds sample items. Add `&many=1` for about 1,500 items, or `&theme=dark&density=compact&text=large&motion=on` to preset the comfort settings.
 
 **Stack:** WXT, React 18, TypeScript (strict), Tailwind CSS v4, Dexie, Shiki, Vitest, Playwright.
@@ -178,15 +284,31 @@ flowchart LR
 - The side panel reads the database directly and refreshes live when items change.
 - A small script in the page's own context hooks `navigator.clipboard` so a site's "Copy" button is captured too, then hands the text to the content script.
 
+The desktop app reuses the extension's classifier, database and panel, and adds the system clipboard watcher, the global palette and the optional bridge to the extension:
+
+```mermaid
+flowchart LR
+  A["Any app<br/>VS Code, Cursor, terminal, chat"] -->|system clipboard| W["Clipboard watcher<br/>skips secrets and password managers"]
+  W --> E["Engine window<br/>classifier + IndexedDB"]
+  X["Browser extension<br/>(optional, paired)"] -->|"127.0.0.1, token handshake"| E
+  E --> P["Panel"]
+  E --> Q["Global palette<br/>Alt+Shift+V"]
+  Q -->|"paste into the app you came from"| A
+  W -. "tray icon + Saved pill" .-> T["Tray"]
+```
+
 ```text
 entrypoints/   background service worker, content script, side panel, page-context hook
 components/    panel, overlay (palette, toast, region select) and shared UI (logo, mascot, icons)
-lib/           types, Dexie db, classifier, settings, messaging, thumbnails, platform hints
+lib/           types, Dexie db, classifier, settings, messaging, bridge protocol, thumbnails, platform hints
 lib/brand/     the shared moustache shape used by the logo, icons and mascot
+desktop/       the Electron desktop app: main process, preload, renderers, tray frames, installer assets
 styles/        design tokens and the Tailwind theme
-scripts/       icon and brand-graphics generators
-tests/e2e/     Playwright end-to-end suite
-docs/          banner, screenshots, roadmap
+scripts/       icon, brand-graphics and release-check scripts
+tests/e2e/     Playwright end-to-end suite for the extension
+tests/desktop/ Electron end-to-end suites (app, bridge, security, packaged build)
+.github/       the Desktop installer workflow (not run yet)
+docs/          banner, screenshots, roadmap and handoff notes
 ```
 
 ## Brand
@@ -238,11 +360,7 @@ A browser extension can't see copies made in VS Code, Cursor, a terminal or an L
   <img src="docs/screenshots/desktop-blip.png" alt="The Saved pill" width="31%">
 </p>
 
-**Install from a build artifact**
-
-- **Windows:** run `npm install` then `npm run desktop:dist:win`, or download the `mouStache-windows` artifact from a run of the *Desktop* GitHub Actions workflow. Run `mouStache-Setup-<version>.exe` (per-user install, no admin needed, you can pick the folder). The installer is **unsigned**, so Windows SmartScreen will show "Windows protected your PC": choose *More info*, then *Run anyway* only if you built or downloaded it yourself.
-- **macOS:** the workflow builds `.dmg` and `.zip` for Apple Silicon and Intel, **unsigned and not notarized** unless the maintainer adds Apple credentials. Gatekeeper will refuse to open it at first (right-click, *Open*). Untested on a real Mac.
-- Moving history over: in the extension use Settings > Export JSON, then in the desktop app Settings > Import JSON.
+**Installing it:** see [Install > Desktop app (Windows)](#desktop-app-windows), [pairing with the extension](#pair-the-extension-with-the-desktop-app) and [macOS](#desktop-app-macos). To move your history over, use Settings > Export JSON in the extension, then Settings > Import JSON in the desktop app.
 
 **Privacy.** Everything stays on your computer. The app makes no network requests. The only network listener is the extension bridge, bound to `127.0.0.1` (default port 47821). It answers only requests that carry your token and come from the extension. The extension sends nothing to it until you turn it on and paste the token.
 
