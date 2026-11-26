@@ -31,12 +31,41 @@ export type NewItemInput = Omit<StashItem, 'id' | 'createdAt' | 'updatedAt' | 'p
 
 export type AddItemResult = StashItem & { deduped?: boolean };
 
+const blank = (s: string | undefined) => s === undefined || s === '';
+
+/**
+ * Merge a richer source into the one an existing item already has (the same text can arrive twice: once from the
+ * OS clipboard with just an app name, once from the extension with the page).
+ *  - an existing URL is NEVER replaced;
+ *  - a page URL replaces an app-name-only source (the title it came with was the app name, not a page title);
+ *  - otherwise only missing fields (title, favicon) are filled in.
+ * Returns `existing` itself (same reference) when nothing changes.
+ */
+export function mergeSource(existing: StashSource | undefined, incoming: StashSource | undefined): StashSource | undefined {
+  if (!incoming || (blank(incoming.url) && blank(incoming.title) && blank(incoming.favicon))) return existing;
+  if (!existing) return incoming;
+  if (blank(existing.url) && !blank(incoming.url)) {
+    const merged: StashSource = { url: incoming.url, title: incoming.title ?? existing.title, favicon: incoming.favicon ?? existing.favicon };
+    return merged;
+  }
+  const merged: StashSource = { ...existing };
+  let changed = false;
+  for (const k of ['title', 'favicon'] as const) {
+    if (blank(merged[k]) && !blank(incoming[k])) {
+      merged[k] = incoming[k];
+      changed = true;
+    }
+  }
+  return changed ? merged : existing;
+}
+
 export async function addItem(input: NewItemInput): Promise<AddItemResult> {
   const now = Date.now();
   return db.transaction('rw', db.items, async () => {
   const existing = await db.items.where('hash').equals(input.hash).first();
   if (existing) {
-    const bumped: StashItem = { ...existing, createdAt: now, updatedAt: now };
+    const source = mergeSource(existing.source, input.source);
+    const bumped: StashItem = { ...existing, createdAt: now, updatedAt: now, ...(source !== existing.source ? { source } : {}) };
     await db.items.put(bumped);
     return { ...bumped, deduped: true };
   }

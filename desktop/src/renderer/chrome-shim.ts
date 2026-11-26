@@ -7,6 +7,34 @@ import { createChromeShim, type Transport } from './shim-core';
 
 declare const __APP_VERSION__: string | undefined;
 
+/**
+ * Tell main about our own clipboard writes BEFORE they happen, so the watcher does not capture them again
+ * (same idea as isStashWriting in lib/content/clipboard.ts).
+ */
+function guardOwnClipboardWrites(api: NonNullable<Window['mouDesktop']>): void {
+  const cb = navigator.clipboard;
+  if (!cb) return;
+  const writeText = cb.writeText.bind(cb);
+  const write = cb.write.bind(cb);
+  Object.defineProperty(cb, 'writeText', {
+    configurable: true,
+    value: (text: string) => {
+      api.markOwnWrite({ text });
+      return writeText(text);
+    },
+  });
+  Object.defineProperty(cb, 'write', {
+    configurable: true,
+    value: async (items: ClipboardItems) => {
+      for (const item of items) {
+        if (item.types.includes('image/png')) api.markOwnWrite({ png: await (await item.getType('image/png')).arrayBuffer() });
+        else if (item.types.includes('text/plain')) api.markOwnWrite({ text: await (await item.getType('text/plain')).text() });
+      }
+      return write(items);
+    },
+  });
+}
+
 function install(): void {
   const api = window.mouDesktop;
   if (!api) return;
@@ -24,6 +52,12 @@ function install(): void {
     openExternal: (url) => void api.openExternal(url),
     version: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : undefined,
   });
+
+  try {
+    guardOwnClipboardWrites(api);
+  } catch {
+    /* no clipboard API in this window */
+  }
 
   try {
     Object.defineProperty(globalThis, 'chrome', { value: shim, configurable: true, writable: true });

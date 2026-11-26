@@ -23,7 +23,15 @@ const nextFrames = (n: number) =>
     step(n);
   });
 
-export function RegionSelect() {
+/** Overrides for hosts that are not a browser page (the desktop screenshot window). Without them: page behaviour. */
+export interface RegionSelectProps {
+  /** Called with the dragged rectangle (CSS px) instead of asking the background worker to capture the tab. */
+  onSelect?: (rect: { x: number; y: number; w: number; h: number; dpr: number }) => void;
+  /** Called on Esc instead of ending the page overlay. */
+  onCancel?: () => void;
+}
+
+export function RegionSelect({ onSelect, onCancel }: RegionSelectProps = {}) {
   const [drag, setDrag] = useState<Drag | null>(null);
   const dragRef = useRef<Drag | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -33,7 +41,8 @@ export function RegionSelect() {
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        overlayStore.endRegion();
+        if (onCancel) onCancel();
+        else overlayStore.endRegion();
       }
     };
     window.addEventListener('keydown', onKey, true);
@@ -51,6 +60,10 @@ export function RegionSelect() {
     if (!d) return;
     const r = normalizeRect(d);
     if (r.w <= MIN_SIZE || r.h <= MIN_SIZE) return; // too small: stay in select mode
+    if (onSelect) {
+      onSelect({ ...r, dpr: window.devicePixelRatio || 1 });
+      return;
+    }
     overlayStore.endRegion();
     await nextFrames(2); // let the overlay disappear before the screenshot
     try {

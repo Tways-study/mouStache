@@ -8,3 +8,4 @@ web-ext.config.ts
 
 playwright-report/
 test-results/
+desktop/out

@@ -6,9 +6,14 @@ import { isSafeExternalUrl } from './router';
 /** Renderer origin: the dev server while developing, the privileged `moustache://app` scheme otherwise. */
 export const APP_SCHEME = 'moustache';
 export const DEV_URL = process.env['ELECTRON_RENDERER_URL'];
-export const APP_ORIGIN = DEV_URL ? new URL(DEV_URL).origin : `${APP_SCHEME}://app`;
+/** `URL.origin` is "null" for custom schemes, so compare protocol + host ourselves. */
+export const originOf = (url: string): string => {
+  const u = new URL(url);
+  return `${u.protocol}//${u.host}`;
+};
+export const APP_ORIGIN = DEV_URL ? originOf(DEV_URL) : `${APP_SCHEME}://app`;
 
-export const pageUrl = (name: 'engine' | 'panel') => (DEV_URL ? `${DEV_URL}/${name}.html` : `${APP_ORIGIN}/${name}.html`);
+export const pageUrl = (name: 'engine' | 'panel' | 'blip' | 'palette' | 'region') => (DEV_URL ? `${DEV_URL}/${name}.html` : `${APP_ORIGIN}/${name}.html`);
 
 const preload = join(import.meta.dirname, '../preload/index.cjs');
 
@@ -29,9 +34,16 @@ function lockDown(win: BrowserWindow): void {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (e, url) => {
-    if (new URL(url).origin !== APP_ORIGIN) e.preventDefault();
+    if (originOf(url) !== APP_ORIGIN) e.preventDefault();
   });
   win.webContents.on('will-attach-webview', (e) => e.preventDefault());
+}
+
+/** A hardened BrowserWindow (same web preferences, popups and navigation locked) for small helper windows. */
+export function createPlainWindow(opts: BrowserWindowConstructorOptions): BrowserWindow {
+  const win = new BrowserWindow({ ...opts, webPreferences: { ...secureWebPreferences, backgroundThrottling: false } });
+  lockDown(win);
+  return win;
 }
 
 /** Hidden window that owns IndexedDB and answers messages with handleMessage(). Never throttled. */

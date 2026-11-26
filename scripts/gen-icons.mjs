@@ -123,3 +123,84 @@ for (const s of [16, 32, 48, 128]) writeFileSync(`public/icon/${s}.png`, render(
 writeFileSync('docs/logo-256.png', render(256));
 writeFileSync('public/logo.svg', SVG);
 console.log('logo written');
+
+// ───────── desktop tray glyphs (desktop/resources/tray) ─────────
+// Monochrome moustache from the same shared shape. States: idle, curl (just captured), paused (dimmed + slash),
+// attention (dot). macOS: black "Template" images the menu bar tints itself. Windows: dark glyph for a light
+// taskbar (onlight-*) and white for a dark one (ondark-*). Each at 16px and @2x (32px).
+const TRAY_K = 0.5 / 0.92; // logo units per canvas unit: the moustache spans ~92% of the icon width
+const rot = (pts, deg) => {
+  const a = (deg * Math.PI) / 180, cx = 0.5, cy = 0.6;
+  return pts.map(([x, y, r]) => {
+    if (x <= 0.5) return [x, y, r];
+    const dx = x - cx, dy = y - cy;
+    return [cx + dx * Math.cos(a) - dy * Math.sin(a), cy + dx * Math.sin(a) + dy * Math.cos(a), r];
+  });
+};
+const TRAY_SHAPES = { idle: HALF, curl: rot(HALF, -13), paused: HALF, attention: HALF };
+
+function glyphCov(nx, ny, size, pts) {
+  const lx = 0.5 + Math.abs(nx - 0.5) * TRAY_K, ly = 0.565 + (ny - 0.5) * TRAY_K;
+  const x = lx;
+  let best = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, ay, ar] = pts[i], [bx, by, br] = pts[i + 1];
+    const dx = bx - ax, dy = by - ay;
+    const t = clamp01(((x - ax) * dx + (ly - ay) * dy) / (dx * dx + dy * dy || 1));
+    const d = Math.hypot(x - (ax + t * dx), ly - (ay + t * dy)) - (ar + (br - ar) * t) - 0.012; // a touch bolder for tiny sizes
+    if (d < best) best = d;
+  }
+  return clamp01(0.5 - (best / TRAY_K) * size);
+}
+
+function renderTray(size, state, ink, dot) {
+  const S = 4, N = size * S;
+  const raw = Buffer.alloc(size * (size * 4 + 1));
+  const pts = TRAY_SHAPES[state];
+  for (let py = 0; py < size; py++) {
+    raw[py * (size * 4 + 1)] = 0;
+    for (let px = 0; px < size; px++) {
+      let a = 0, dr = 0, dg = 0, db = 0, da = 0;
+      for (let sy = 0; sy < S; sy++) for (let sx = 0; sx < S; sx++) {
+        const x = (px * S + sx + 0.5) / N, y = (py * S + sy + 0.5) / N;
+        let c = glyphCov(x, y, N / S, pts) * (state === 'paused' ? 0.45 : 1);
+        if (state === 'paused') c = Math.max(c, segCov(x * N, y * N, 0.14 * N, 0.88 * N, 0.86 * N, 0.12 * N, 0.045 * N));
+        a += c;
+        if (state === 'attention') {
+          const dc = clamp01(0.5 - (Math.hypot(x - 0.8, y - 0.24) - 0.17) * N);
+          da += dc; dr += dc * dot[0]; dg += dc * dot[1]; db += dc * dot[2];
+        }
+      }
+      const o = py * (size * 4 + 1) + 1 + px * 4;
+      const ia = a / (S * S), dca = da / (S * S);
+      const total = Math.min(1, ia + dca);
+      if (total > 0) {
+        // blend ink and dot by coverage
+        const wi = ia / (ia + dca || 1), wd = 1 - wi;
+        raw[o] = ink[0] * wi + (dr / (da || 1)) * wd;
+        raw[o + 1] = ink[1] * wi + (dg / (da || 1)) * wd;
+        raw[o + 2] = ink[2] * wi + (db / (da || 1)) * wd;
+      }
+      raw[o + 3] = Math.round(total * 255);
+    }
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4);
+  ihdr[8] = 8; ihdr[9] = 6;
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+mkdirSync('desktop/resources/tray', { recursive: true });
+const ORANGE = [255, 159, 10];
+for (const state of Object.keys(TRAY_SHAPES)) {
+  const file = state === 'curl' ? 'curl' : state;
+  for (const [suffix, size] of [['', 16], ['@2x', 32]]) {
+    writeFileSync(`desktop/resources/tray/mac-${file}Template${suffix}.png`, renderTray(size, state, [0, 0, 0], [0, 0, 0]));
+    writeFileSync(`desktop/resources/tray/onlight-${file}${suffix}.png`, renderTray(size, state, [28, 28, 30], ORANGE));
+    writeFileSync(`desktop/resources/tray/ondark-${file}${suffix}.png`, renderTray(size, state, [255, 255, 255], ORANGE));
+  }
+}
+console.log('tray glyphs written');

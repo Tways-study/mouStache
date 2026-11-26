@@ -1,0 +1,8 @@
+/*
+ * Tailwind only scans from the Vite root (desktop/src/renderer), but the UI classes live in the shared repo
+ * folders. This wrapper imports the extension's stylesheet unchanged and tells Tailwind where to look.
+ */
+@import "../../../styles/app.css";
+@source "../../../components";
+@source "../../../entrypoints";
+@source "../../../lib";

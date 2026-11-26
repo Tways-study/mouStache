@@ -10,9 +10,13 @@
     "zip": "wxt zip",
     "postinstall": "wxt prepare",
     "test": "vitest run",
-    "typecheck": "wxt prepare && tsc --noEmit",
+    "typecheck": "wxt prepare && tsc --noEmit && npm run desktop:typecheck",
     "icons": "node scripts/gen-icons.mjs",
-    "e2e": "npm run build && playwright test"
+    "e2e": "npm run build && playwright test",
+    "desktop:dev": "electron-vite dev --config desktop/electron.vite.config.ts",
+    "desktop:build": "electron-vite build --config desktop/electron.vite.config.ts",
+    "desktop:typecheck": "tsc --noEmit -p desktop/tsconfig.json",
+    "desktop:e2e": "npm run desktop:build && playwright test -c desktop/playwright.config.ts"
   },
   "dependencies": {
     "@shikijs/langs": "^4.6.0",
@@ -38,5 +42,6 @@
     "typescript": "^7.0.2",
     "vitest": "^5.1.1",
     "wxt": "^0.21.5"
-  }
+  },
+  "main": "desktop/out/main/index.js"
 }

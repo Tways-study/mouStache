@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { StashItem } from './types';
-import { addItem, blobToDataUrl, clearAll, countItems, countOlderThan, db, deleteOlderThan, deleteItem, enforceMaxItems, exportAll, getItem, importAll, listItems, updateItem } from './db';
+import { mergeSource, addItem, blobToDataUrl, clearAll, countItems, countOlderThan, db, deleteOlderThan, deleteItem, enforceMaxItems, exportAll, getItem, importAll, listItems, updateItem } from './db';
 import { hashText } from './hash';
 
 async function addText(text: string, extra: Partial<Parameters<typeof addItem>[0]> = {}) {
@@ -82,8 +82,9 @@ describe('db', () => {
   });
 
   it('export/import roundtrips text items', async () => {
-    await addText('one', { tags: ['a'], lang: 'ts', pinned: true, source: { url: 'https://x.dev', title: 'X' } });
-    await addText('two');
+    // distinct createdAt: items created in the same millisecond have no defined relative order after re-import
+    await addText('one', { tags: ['a'], lang: 'ts', pinned: true, source: { url: 'https://x.dev', title: 'X' }, createdAt: 1_000 });
+    await addText('two', { createdAt: 2_000 });
     const dump = await exportAll();
     expect(dump.items).toHaveLength(2);
     const json = JSON.parse(JSON.stringify(dump));
@@ -194,5 +195,67 @@ describe('db', () => {
       expect((await listItems({ kind: 'image' })).map((i) => i.hash)).toEqual(['img-new']);
       expect(await countItems()).toBe(5);
     });
+  });
+});
+
+describe('source merge on dedupe (a browser copy is seen by both the OS watcher and the extension)', () => {
+  it('a duplicate that arrives with a page source enriches an item that only had an app name', async () => {
+    const a = await addText('SELECT 1;', { createdAt: 1, updatedAt: 1, source: { title: 'chrome' } });
+    const b = await addText('SELECT 1;', { source: { url: 'https://example.com/page', title: 'Example page', favicon: 'https://example.com/f.ico' } });
+    expect(b.deduped).toBe(true);
+    expect(b.id).toBe(a.id);
+    expect(b.source).toEqual({ url: 'https://example.com/page', title: 'Example page', favicon: 'https://example.com/f.ico' });
+    expect((await getItem(a.id))?.source?.url).toBe('https://example.com/page');
+    expect(await countItems()).toBe(1);
+  });
+
+  it('works the other way round: the extension copy first, then the OS watcher (app name only)', async () => {
+    const a = await addText('docker ps', { source: { url: 'https://docs.docker.com/', title: 'Docker docs' } });
+    const b = await addText('docker ps', { source: { title: 'chrome' } });
+    expect(b.source).toEqual({ url: 'https://docs.docker.com/', title: 'Docker docs' }); // nothing lost, app name not mixed in
+    expect(b.id).toBe(a.id);
+  });
+
+  it('adds a source to an item that had none', async () => {
+    await addText('ls -la', { createdAt: 5, updatedAt: 5 });
+    const b = await addText('ls -la', { source: { url: 'https://example.com/', title: 'Ex' } });
+    expect(b.source).toEqual({ url: 'https://example.com/', title: 'Ex' });
+  });
+
+  it('never overwrites an existing URL, but fills a missing title or favicon', async () => {
+    await addText('pwd', { source: { url: 'https://a.com/one' } });
+    const b = await addText('pwd', { source: { url: 'https://b.com/two', title: 'B', favicon: 'https://b.com/f.ico' } });
+    expect(b.source).toEqual({ url: 'https://a.com/one', title: 'B', favicon: 'https://b.com/f.ico' });
+    const c = await addText('pwd', { source: { url: 'https://c.com/three', title: 'C' } });
+    expect(c.source?.url).toBe('https://a.com/one');
+    expect(c.source?.title).toBe('B'); // existing title kept too
+  });
+
+  it('keeps the existing bump semantics: newer createdAt, same id, no new item', async () => {
+    const a = await addText('git status', { createdAt: 1, updatedAt: 1 });
+    const b = await addText('git status', { source: { url: 'https://example.com/' } });
+    expect(b.createdAt).toBeGreaterThan(1);
+    expect(b.id).toBe(a.id);
+    expect(await countItems()).toBe(1);
+  });
+
+  it('a duplicate without a source leaves the stored source exactly as it was', async () => {
+    await addText('uname -a', { source: { url: 'https://a.com/x', title: 'A' } });
+    const b = await addText('uname -a');
+    expect(b.source).toEqual({ url: 'https://a.com/x', title: 'A' });
+  });
+});
+
+describe('mergeSource', () => {
+  it('returns the very same object when nothing changes', () => {
+    const existing = { url: 'https://a.com/', title: 'A', favicon: 'https://a.com/f' };
+    expect(mergeSource(existing, { title: 'B' })).toBe(existing);
+    expect(mergeSource(existing, undefined)).toBe(existing);
+    expect(mergeSource(existing, {})).toBe(existing);
+    expect(mergeSource(undefined, undefined)).toBeUndefined();
+  });
+  it('takes the incoming source when there is none, and ignores empty strings', () => {
+    expect(mergeSource(undefined, { url: 'https://a.com/' })).toEqual({ url: 'https://a.com/' });
+    expect(mergeSource({ url: '', title: '' }, { url: 'https://a.com/', title: 'A' })).toEqual({ url: 'https://a.com/', title: 'A', favicon: undefined });
   });
 });

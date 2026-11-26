@@ -171,6 +171,13 @@ export default function App() {
     };
   }, [refetch]);
 
+  // desktop app: the tray's "Settings…" asks the panel to open Settings (never fires in the extension)
+  useEffect(() => {
+    const open = () => setSettingsOpen(true);
+    window.addEventListener('stash:open-settings', open);
+    return () => window.removeEventListener('stash:open-settings', open);
+  }, []);
+
   // commit pending deletes if the panel closes mid-undo
   useEffect(() => {
     const flush = () => {

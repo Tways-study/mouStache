@@ -1,0 +1,4 @@
+@import "./sources.css";
+
+html, body, #root { margin: 0; height: 100%; overflow: hidden; background: #000 !important; cursor: crosshair; }
+.region-shot { position: fixed; inset: 0; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; }

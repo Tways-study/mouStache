@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleDetection": "force",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "jsx": "react-jsx",
+    "types": ["chrome", "node", "vite/client", "electron-vite/node"],
+    "paths": { "@/*": ["../*"] }
+  },
+  "include": ["src", "electron.vite.config.ts", "playwright.config.ts", "../tests/desktop"]
+}

@@ -1,17 +1,14 @@
 import { Mascot } from '@/components/shared/Mascot';
-import { comboText } from '@/lib/platform';
+import { comboText, keyLabel } from '@/lib/platform';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { send } from '@/lib/messaging';
 import type { StashItemLite } from '@/lib/messaging';
 import type { TagGroup } from '@/lib/types';
 import { tagGroup } from '@/lib/classify';
-import { overlayStore } from '@/lib/content/store';
 import { debounce } from '@/lib/content/debounce';
-import { insertAtCursor, isEditable } from '@/lib/content/insert';
-import { writeImageFromDataUrl, writeText } from '@/lib/content/clipboard';
 import { hostname, isMonoItem, itemGroup, previewLine, relativeTime, tagLabel } from '@/lib/content/labels';
 import { GROUP_STYLE, GroupIcon, PinIcon, SearchIcon } from './icons';
+import { webPaletteHost, type PaletteHost, type PaletteMode } from './paletteHost';
 
 const RESULT_LIMIT = 30;
 
@@ -72,7 +69,8 @@ function Row({
       ref={ref}
       role="option"
       aria-selected={selected}
-      onMouseMove={onHover}
+      // a resting cursor can generate move events when the list changes or the window appears under it (movement 0): ignore those
+      onMouseMove={(e) => (e.movementX !== 0 || e.movementY !== 0) && onHover()}
       onClick={onClick}
       className={[
         'mx-[6px] flex cursor-default items-center gap-[12px] rounded-lg px-[10px] py-[8px]',
@@ -118,7 +116,18 @@ function Row({
   );
 }
 
-export function Palette({ returnFocus, closing = false }: { returnFocus: Element | null; closing?: boolean }) {
+interface PaletteProps {
+  returnFocus: Element | null;
+  closing?: boolean;
+  /** Defaults to the extension's page-overlay host, so the content script renders it exactly as before. */
+  host?: PaletteHost;
+  /** `overlay` = centred dialog over a page (extension). `window` = the dialog fills its own window (desktop). */
+  layout?: 'overlay' | 'window';
+}
+
+export function Palette({ returnFocus, closing = false, host: hostProp, layout = 'overlay' }: PaletteProps) {
+  const host = useMemo(() => hostProp ?? webPaletteHost(returnFocus), [hostProp, returnFocus]);
+  const windowed = layout === 'window';
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState(0);
   const [items, setItems] = useState<StashItemLite[]>([]);
@@ -151,14 +160,13 @@ export function Palette({ returnFocus, closing = false }: { returnFocus: Element
     const my = ++seq.current;
     const group = FILTERS[f]?.group ?? null;
     try {
-      const res = await send({
-        type: 'search',
+      const res = await host.search({
         query: q,
         limit: group ? 150 : RESULT_LIMIT,
         ...(group === 'image' ? { kind: 'image' as const } : {}),
       });
       if (my !== seq.current) return;
-      const list = (Array.isArray(res) ? res : []).filter((it) => !group || itemGroup(it) === group);
+      const list = res.filter((it) => !group || itemGroup(it) === group);
       setItems(list.slice(0, RESULT_LIMIT));
     } catch {
       if (my !== seq.current) return;
@@ -166,7 +174,7 @@ export function Palette({ returnFocus, closing = false }: { returnFocus: Element
     }
     setLoaded(true);
     setSel(0);
-  }, []);
+  }, [host]);
 
   const debounced = useMemo(() => debounce((q: string, f: number) => void run(q, f), 80), [run]);
   useEffect(() => () => debounced.cancel(), [debounced]);
@@ -183,33 +191,11 @@ export function Palette({ returnFocus, closing = false }: { returnFocus: Element
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
-  const close = () => overlayStore.closePalette();
+  const close = () => host.close();
 
-  const activate = async (item: StashItemLite | undefined, paste: boolean) => {
+  const activate = async (item: StashItemLite | undefined, mode: PaletteMode) => {
     if (!item) return;
-    try {
-      const res = await send({ type: 'copy-item', id: item.id });
-      if (!res?.ok) {
-        overlayStore.showToast('Could not copy that item');
-        return;
-      }
-      let pastedText: string | undefined;
-      if (res.kind === 'image' && res.dataUrl) {
-        await writeImageFromDataUrl(res.dataUrl);
-        overlayStore.showToast(`Image copied — paste with ${comboText(['Mod', 'V'])}`);
-      } else if (res.text !== undefined) {
-        await writeText(res.text);
-        pastedText = res.text;
-        overlayStore.showToast('Copied');
-      }
-      close();
-      if (paste && pastedText !== undefined && isEditable(returnFocus)) {
-        // wait a tick so the palette unmounts and focus is restored first
-        setTimeout(() => insertAtCursor(returnFocus, pastedText), 0);
-      }
-    } catch {
-      overlayStore.showToast('Could not copy that item');
-    }
+    await host.activate(item, mode);
   };
 
   const move = (delta: number) => {
@@ -232,7 +218,9 @@ export function Palette({ returnFocus, closing = false }: { returnFocus: Element
       move(-1);
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      void activate(items[sel], !e.shiftKey);
+      // Mod+Enter = paste as a fenced code block (desktop only); Shift+Enter = copy only
+      const mode: PaletteMode = host.codeBlock && mod ? 'code' : e.shiftKey ? 'copy' : 'paste';
+      void activate(items[sel], mode);
     } else if (e.key === 'Tab') {
       e.preventDefault();
       setFilter((f) => (f + (e.shiftKey ? -1 : 1) + FILTERS.length) % FILTERS.length);
@@ -249,22 +237,35 @@ export function Palette({ returnFocus, closing = false }: { returnFocus: Element
       onKeyUp={(e) => e.stopPropagation()}
       onKeyPress={(e) => e.stopPropagation()}
     >
-      <div
-        className={[
-          'absolute inset-0 bg-black/20 backdrop-blur-[2px] dark:bg-black/40 transition-opacity motion-reduce:transition-none',
-          closing ? 'duration-[120ms] ease-in' : 'duration-base',
-          entered && !closing ? 'opacity-100' : 'opacity-0',
-        ].join(' ')}
-        onMouseDown={close}
-      />
+      {!windowed && (
+        <div
+          className={[
+            'absolute inset-0 bg-black/20 backdrop-blur-[2px] dark:bg-black/40 transition-opacity motion-reduce:transition-none',
+            closing ? 'duration-[120ms] ease-in' : 'duration-base',
+            entered && !closing ? 'opacity-100' : 'opacity-0',
+          ].join(' ')}
+          onMouseDown={close}
+        />
+      )}
       <div
         role="dialog"
         aria-label="mouStache quick palette"
         className={[
-          'vibrancy palette-surface shadow-modal absolute left-1/2 top-[20vh] flex max-h-[min(560px,70vh)] w-[min(640px,92vw)] -translate-x-1/2 flex-col overflow-hidden rounded-2xl border border-separator',
+          'vibrancy palette-surface shadow-modal flex flex-col overflow-hidden rounded-2xl border border-separator',
+          windowed
+            ? 'absolute inset-[6px]'
+            : 'absolute left-1/2 top-[20vh] max-h-[min(560px,70vh)] w-[min(640px,92vw)] -translate-x-1/2',
           'transition-[opacity,transform] motion-reduce:transition-none',
           closing ? 'duration-[120ms] ease-in' : 'duration-base ease-[var(--ease-out)]',
-          entered && !closing ? 'scale-100 opacity-100' : closing ? 'scale-[0.98] opacity-0' : 'scale-[0.97] opacity-0',
+          windowed
+            ? entered && !closing
+              ? 'opacity-100'
+              : 'opacity-0'
+            : entered && !closing
+              ? 'scale-100 opacity-100'
+              : closing
+                ? 'scale-[0.98] opacity-0'
+                : 'scale-[0.97] opacity-0',
         ].join(' ')}
       >
         <div className="flex items-center gap-[12px] px-[18px] py-[14px]">
@@ -312,7 +313,7 @@ export function Palette({ returnFocus, closing = false }: { returnFocus: Element
 
         <div role="listbox" className="thin-scroll min-h-0 flex-1 overflow-y-auto py-[6px]">
           {items.map((it, i) => (
-            <Row key={it.id} item={it} selected={i === sel} onHover={() => setSel(i)} onClick={() => void activate(it, true)} />
+            <Row key={it.id} item={it} selected={i === sel} onHover={() => setSel(i)} onClick={() => void activate(it, 'paste')} />
           ))}
           {loaded && items.length === 0 && (
             <div className="flex flex-col items-center px-[24px] py-[28px] text-center">
@@ -340,6 +341,11 @@ export function Palette({ returnFocus, closing = false }: { returnFocus: Element
           <span className="flex items-center gap-[5px]">
             <Keycap>esc</Keycap> close
           </span>
+          {host.codeBlock && (
+            <span className="flex items-center gap-[5px]">
+              <Keycap>{keyLabel('Mod') + '↵'}</Keycap> code block
+            </span>
+          )}
           <span className="ml-auto flex items-center gap-[5px]">
             <Keycap>⇥</Keycap> filter
           </span>

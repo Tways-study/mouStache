@@ -3,6 +3,8 @@ import { addItem, dataUrlToBlob, enforceMaxItems } from '../db';
 import { hashBlob, hashText } from '../hash';
 import { sendToTab, type SaveResult, type SaveVia } from '../messaging';
 import { getSettings } from '../settings';
+import { stripUrl } from '../url';
+import { forwardImage, forwardText } from './forward';
 import { makeThumb } from '../thumbs';
 import type { ItemKind, StashSource } from '../types';
 import { incrementUnseen } from './badge';
@@ -19,17 +21,7 @@ export function hostOf(url?: string): string | undefined {
   }
 }
 
-/** Drop query string and hash from a page URL (they often carry tokens). */
-export function stripUrl(url?: string): string | undefined {
-  if (!url) return url;
-  try {
-    const u = new URL(url);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:' && u.protocol !== 'file:') return url;
-    return u.origin === 'null' ? `${u.protocol}//${u.pathname}` : u.origin + u.pathname;
-  } catch {
-    return undefined;
-  }
-}
+export { stripUrl };
 
 function cleanSource(source?: StashSource): StashSource | undefined {
   if (!source) return source;
@@ -96,6 +88,8 @@ export async function saveText(
   if (settings.showToast) {
     await toast(tabId, item.deduped ? 'Already in mouStache — moved to top' : 'Saved to mouStache');
   }
+  // desktop bridge: fire and forget, never for secrets; any failure is invisible (see forward.ts)
+  if (!c.secret) forwardText(text, source, via);
   return { ok: true, id: item.id, deduped: !!item.deduped };
 }
 
@@ -134,6 +128,7 @@ export async function saveImage(
     if (settings.showToast) {
       await toast(tabId, item.deduped ? 'Already in mouStache — moved to top' : 'Saved to mouStache');
     }
+    forwardImage(blob, source, via);
     return { ok: true, id: item.id, deduped: !!item.deduped };
   } catch (e) {
     await toast(tabId, "Couldn't save that image");

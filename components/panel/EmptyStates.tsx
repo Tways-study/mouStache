@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { Icon } from '@/components/shared/Icon';
 import { Mascot } from '@/components/shared/Mascot';
 import { Combo } from '@/components/shared/Keycap';
-import { SCREENSHOT_TO_CLIPBOARD } from '@/lib/platform';
+import { isMac, SCREENSHOT_TO_CLIPBOARD } from '@/lib/platform';
+import { isDesktopApp } from '@/lib/panel/desktop';
 
 function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
@@ -18,7 +19,25 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
+/** The same three-step card, worded for the desktop app (copies from any app, tray icon, global palette). */
+function DesktopSteps() {
+  return (
+    <>
+      <Step n={1} title="Copy anything, in any app">
+        <span>Editor, terminal, browser or chat: select text, then</span> <Combo keys={['Mod', 'C']} />
+      </Step>
+      <Step n={2} title="Search and paste from anywhere">
+        <Combo keys={['Alt', 'Shift', 'V']} /> <span>opens the quick palette over any app; Enter pastes there</span>
+      </Step>
+      <Step n={3} title="Screenshots land here too">
+        <Combo keys={['Alt', 'Shift', 'S']} /> <span>grabs a screen region straight into mouStache</span>
+      </Step>
+    </>
+  );
+}
+
 export function Onboarding({ onPaste }: { onPaste: () => void }) {
+  const desktop = isDesktopApp();
   return (
     <div className="mx-auto flex max-w-[420px] flex-col px-5 pb-10 pt-10">
       <div className="mb-6">
@@ -33,6 +52,7 @@ export function Onboarding({ onPaste }: { onPaste: () => void }) {
       </div>
 
       <ol className="divide-y divide-separator overflow-hidden rounded-xl bg-elevated shadow-card">
+        {desktop ? <DesktopSteps /> : (<>
         <Step n={1} title="Copy anything — it lands here">
           <span>Select text on any page, then</span> <Combo keys={['Mod', 'C']} />
         </Step>
@@ -43,6 +63,7 @@ export function Onboarding({ onPaste }: { onPaste: () => void }) {
           <Combo keys={SCREENSHOT_TO_CLIPBOARD} /> <span>then</span> <Combo keys={['Mod', 'V']} />
           <span>in this panel</span>
         </Step>
+        </>)}
       </ol>
 
       <button
@@ -57,7 +78,11 @@ export function Onboarding({ onPaste }: { onPaste: () => void }) {
       <p className="mt-5 flex items-start gap-2 text-[12px] leading-4 text-label-tertiary">
         <Icon name="tag" size={13} className="mt-px shrink-0" />
         <span>
-          Pin mouStache to your toolbar: open the puzzle-piece menu, then click the pin next to mouStache.
+          {desktop
+            ? isMac
+              ? 'mouStache lives in your menu bar. Click the moustache to open it; it keeps listening while the window is closed.'
+              : 'mouStache lives in your tray. If you do not see the moustache, click the ^ in the taskbar and drag it out to keep it visible.'
+            : 'Pin mouStache to your toolbar: open the puzzle-piece menu, then click the pin next to mouStache.'}
         </span>
       </p>
     </div>

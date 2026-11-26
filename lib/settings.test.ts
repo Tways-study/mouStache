@@ -43,6 +43,22 @@ describe('settings', () => {
     expect(s.badgeCount).toBe(true);
   });
 
+  it('has quiet desktop presence defaults and old stored settings gain them without losing anything', async () => {
+    expect(DEFAULT_SETTINGS).toMatchObject({
+      blipMode: 'blip', blipPosition: 'bottom-right', blipDuration: 'normal',
+      menuBarCount: false, weeklySummary: false,
+      pausedApps: ['1Password', 'Bitwarden', 'KeePass', 'LastPass', 'Dashlane'],
+    });
+    expect(DEFAULT_SETTINGS).toMatchObject({ hotkeyPalette: 'Alt+Shift+V', hotkeyScreenshot: 'Alt+Shift+S' });
+    store['stash:settings'] = { autoCapture: false, theme: 'dark', pausedHosts: ['example.com'], maxItems: 500 }; // extension-era shape
+    const s = await getSettings();
+    expect(s).toMatchObject({ autoCapture: false, theme: 'dark', pausedHosts: ['example.com'], maxItems: 500 });
+    expect(s.blipMode).toBe('blip');
+    expect(s.pausedApps).toEqual(DEFAULT_SETTINGS.pausedApps);
+    // the bridge stays OFF and unpaired until the user turns it on
+    expect(s).toMatchObject({ bridgeEnabled: false, bridgeToken: '', bridgePort: 47821 });
+  });
+
   it('setSettings merges a partial and persists', async () => {
     const next = await setSettings({ density: 'compact', theme: 'dark' });
     expect(next.density).toBe('compact');

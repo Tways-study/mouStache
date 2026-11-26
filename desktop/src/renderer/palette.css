@@ -1,0 +1,4 @@
+@import "./sources.css";
+
+/* The window is transparent; the palette draws its own rounded surface inside it. */
+html, body, #root { background: transparent !important; margin: 0; height: 100%; overflow: hidden; }

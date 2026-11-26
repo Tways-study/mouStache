@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { CleanupDays, Density, ReduceMotion, Settings, TextSize, ThemeSetting } from '@/lib/types';
+import type { BlipDuration, BlipMode, BlipPosition, CleanupDays, Density, ReduceMotion, Settings, TextSize, ThemeSetting } from '@/lib/types';
+import { desktopBridge, isDesktopApp } from '@/lib/panel/desktop';
+import { isMac } from '@/lib/platform';
+import { acceleratorFromKeyEvent, validateAccelerator } from '@/lib/accelerator';
 import { Sheet } from '@/components/shared/Sheet';
 import { Icon } from '@/components/shared/Icon';
 import { activeTabHost, appVersion, openShortcutsPage } from '@/lib/panel/ext';
@@ -38,6 +41,21 @@ const MOTIONS: { value: ReduceMotion; label: string }[] = [
   { value: 'system', label: 'System' },
   { value: 'on', label: 'On' },
   { value: 'off', label: 'Off' },
+];
+const BLIP_MODES: { value: BlipMode; label: string }[] = [
+  { value: 'off', label: 'Off' },
+  { value: 'tray', label: 'Tray only' },
+  { value: 'blip', label: 'Blip' },
+];
+const BLIP_POSITIONS: { value: BlipPosition; label: string }[] = [
+  { value: 'bottom-right', label: 'Bottom right' },
+  { value: 'bottom-left', label: 'Bottom left' },
+  { value: 'top-right', label: 'Top right' },
+];
+const BLIP_DURATIONS: { value: BlipDuration; label: string }[] = [
+  { value: 'short', label: 'Short' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'long', label: 'Long' },
 ];
 const CLEANUPS: { value: CleanupDays; label: string }[] = [
   { value: 0, label: 'Never' },
@@ -125,6 +143,63 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   );
 }
 
+type HotkeyEntryStatus = { requested: string; active?: string; ok: boolean; error?: string };
+
+/** "Press the shortcut" field: records a key combination, validates it, and shows why one is refused. */
+function HotkeyField({
+  label, value, defaultValue, status, onCommit,
+}: {
+  label: string;
+  value: string;
+  defaultValue: string;
+  status?: HotkeyEntryStatus;
+  onCommit: (accelerator: string) => void;
+}) {
+  const [recording, setRecording] = useState(false);
+  const [error, setError] = useState<string>();
+  // a registration failure reported by the main process applies to the value we last asked for
+  const registrationError = status && !status.ok && status.requested === value ? status.error : undefined;
+  const shown = error ?? registrationError;
+  return (
+    <div className="px-3.5 py-2.5">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <div className="text-[13px]">{label}</div>
+        {value !== defaultValue && (
+          <button type="button" className="text-[11.5px] text-accent hover:underline" onClick={() => { setError(undefined); onCommit(defaultValue); }}>
+            Reset
+          </button>
+        )}
+      </div>
+      <input
+        readOnly
+        value={recording ? 'Press the new shortcut…' : value}
+        aria-label={label}
+        aria-invalid={shown ? true : undefined}
+        onFocus={() => { setRecording(true); setError(undefined); }}
+        onBlur={() => setRecording(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Tab') return;
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.key === 'Escape') return void e.currentTarget.blur();
+          if (e.key === 'Backspace' || e.key === 'Delete') {
+            onCommit(defaultValue);
+            return void e.currentTarget.blur();
+          }
+          const acc = acceleratorFromKeyEvent(e.nativeEvent, isMac);
+          if (!acc) return; // only modifiers so far
+          const v = validateAccelerator(acc);
+          if (!v.ok) return void setError(v.error);
+          onCommit(v.accelerator);
+          e.currentTarget.blur();
+        }}
+        className="h-8 w-full rounded-lg bg-hover px-2.5 font-mono text-[12px] outline-none focus:shadow-[0_0_0_2px_var(--accent)]"
+      />
+      {shown && <p role="alert" className="mt-1.5 text-[11.5px] leading-4 text-tag-error">{shown}</p>}
+    </div>
+  );
+}
+
 function ConfirmRow({
   text, confirmLabel, onCancel, onConfirm,
 }: {
@@ -154,6 +229,10 @@ export function SettingsSheet({ open, onClose, settings, onToast }: Props) {
   const [confirm, setConfirm] = useState<'history' | 'all' | 'shots' | null>(null);
   const [usage, setUsage] = useState<{ count: number; bytes?: number }>();
   const [oldShots, setOldShots] = useState(0);
+  const desktop = isDesktopApp();
+  const [login, setLogin] = useState(false);
+  const [appInput, setAppInput] = useState('');
+  const [hotkeys, setHotkeys] = useState<{ palette: HotkeyEntryStatus; screenshot: HotkeyEntryStatus }>();
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -164,7 +243,15 @@ export function SettingsSheet({ open, onClose, settings, onToast }: Props) {
     void activeTabHost().then(setHost);
     void getStorageInfo().then(setUsage).catch(() => undefined);
     void countOldImages().then(setOldShots).catch(() => undefined);
+    void desktopBridge()?.getLoginItem().then(setLogin).catch(() => undefined);
+    void desktopBridge()?.getHotkeyStatus().then(setHotkeys).catch(() => undefined);
   }, [open]);
+
+  /** Save a shortcut, then ask the main process how registering it went (it re-registers on every change). */
+  const setHotkey = (p: Partial<Settings>) => {
+    set(p);
+    setTimeout(() => void desktopBridge()?.getHotkeyStatus().then(setHotkeys).catch(() => undefined), 700);
+  };
 
   const set = (p: Partial<Settings>) => void saveSettings(p);
   const paused = settings.pausedHosts;
@@ -235,22 +322,121 @@ export function SettingsSheet({ open, onClose, settings, onToast }: Props) {
           <Field label="Reduce motion">
             <Segmented label="Reduce motion" value={settings.reduceMotion} options={MOTIONS} onChange={(v) => set({ reduceMotion: v })} />
           </Field>
-          <Row label="Quiet mode" hint="No on-page toast, no toolbar badge count">
-            <Switch
-              label="Quiet mode"
-              checked={!settings.showToast && !settings.badgeCount}
-              onChange={(v) => set({ showToast: !v, badgeCount: !v })}
-            />
-          </Row>
+          {!desktop && (
+            <Row label="Quiet mode" hint="No on-page toast, no toolbar badge count">
+              <Switch
+                label="Quiet mode"
+                checked={!settings.showToast && !settings.badgeCount}
+                onChange={(v) => set({ showToast: !v, badgeCount: !v })}
+              />
+            </Row>
+          )}
         </Group>
 
+        {desktop && (
+          <>
+            <Group title="Presence" note="mouStache listens quietly in the background. Skipped copies (secrets, password managers, paused apps) never show anything.">
+              <Field label="On-screen blip" hint={settings.blipMode === 'blip' ? 'A tiny “Saved · SQL” pill' : settings.blipMode === 'tray' ? 'Only the tray icon reacts' : 'No feedback at all'}>
+                <Segmented label="On-screen blip" value={settings.blipMode} options={BLIP_MODES} onChange={(v) => set({ blipMode: v })} />
+              </Field>
+              <Field label="Blip position">
+                <Segmented label="Blip position" value={settings.blipPosition} options={BLIP_POSITIONS} onChange={(v) => set({ blipPosition: v })} />
+              </Field>
+              <Field label="Blip duration">
+                <Segmented label="Blip duration" value={settings.blipDuration} options={BLIP_DURATIONS} onChange={(v) => set({ blipDuration: v })} />
+              </Field>
+              {isMac && (
+                <Row label="Menu-bar count" hint="Show today’s count next to the icon">
+                  <Switch label="Menu-bar count" checked={settings.menuBarCount} onChange={(v) => set({ menuBarCount: v })} />
+                </Row>
+              )}
+              <Row label="Weekly summary" hint="Saved for a later update">
+                <Switch label="Weekly summary" checked={settings.weeklySummary} onChange={(v) => set({ weeklySummary: v })} />
+              </Row>
+              <Row label="Pause capture" hint="Stop listening to the clipboard">
+                <Switch label="Pause capture" checked={!settings.autoCapture} onChange={(v) => set({ autoCapture: !v })} />
+              </Row>
+            </Group>
+
+            <Group title="Desktop" note="Copies made while one of these apps is in front are never saved. App detection is best effort.">
+              <Row label="Launch at login" hint="Starts hidden in the tray">
+                <Switch
+                  label="Launch at login"
+                  checked={login}
+                  onChange={(v) => {
+                    setLogin(v);
+                    void desktopBridge()?.setLoginItem(v);
+                  }}
+                />
+              </Row>
+              <HotkeyField
+                label="Quick palette shortcut"
+                value={settings.hotkeyPalette}
+                defaultValue="Alt+Shift+V"
+                status={hotkeys?.palette}
+                onCommit={(a) => setHotkey({ hotkeyPalette: a })}
+              />
+              <HotkeyField
+                label="Region screenshot shortcut"
+                value={settings.hotkeyScreenshot}
+                defaultValue="Alt+Shift+S"
+                status={hotkeys?.screenshot}
+                onCommit={(a) => setHotkey({ hotkeyScreenshot: a })}
+              />
+              <div className="space-y-2.5 px-3.5 py-3">
+                <div className="text-[13px]">Paused apps</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {settings.pausedApps.map((a) => (
+                    <span key={a} className="inline-flex h-6 items-center gap-1 rounded-full bg-hover pl-2.5 pr-1 text-[11.5px]">
+                      {a}
+                      <button
+                        type="button"
+                        aria-label={`Resume capture for ${a}`}
+                        className="icon-btn hit !size-[18px] !rounded-full"
+                        onClick={() => set({ pausedApps: settings.pausedApps.filter((x) => x !== a) })}
+                      >
+                        <Icon name="close" size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const a = appInput.trim();
+                    if (a && !settings.pausedApps.some((x) => x.toLowerCase() === a.toLowerCase())) set({ pausedApps: [...settings.pausedApps, a] });
+                    setAppInput('');
+                  }}
+                >
+                  <input
+                    value={appInput}
+                    onChange={(e) => setAppInput(e.target.value)}
+                    placeholder="App name"
+                    aria-label="App to pause"
+                    spellCheck={false}
+                    className="h-8 min-w-0 flex-1 rounded-lg bg-hover px-2.5 text-[12px] outline-none placeholder:text-label-tertiary focus:shadow-[0_0_0_2px_var(--accent)]"
+                  />
+                  <button type="submit" className="h-8 rounded-lg bg-hover px-3 text-[12px] font-medium hover:bg-active">
+                    Add
+                  </button>
+                </form>
+              </div>
+            </Group>
+          </>
+        )}
+
         <Group title="Capture">
-          <Row label="Auto-capture copies" hint="Save text you copy on any page">
-            <Switch label="Auto-capture copies" checked={settings.autoCapture} onChange={(v) => set({ autoCapture: v })} />
-          </Row>
-          <Row label="Show “Saved” toast" hint="A small pill on the page after a capture">
-            <Switch label="Show Saved toast" checked={settings.showToast} onChange={(v) => set({ showToast: v })} />
-          </Row>
+          {!desktop && (
+            <>
+              <Row label="Auto-capture copies" hint="Save text you copy on any page">
+                <Switch label="Auto-capture copies" checked={settings.autoCapture} onChange={(v) => set({ autoCapture: v })} />
+              </Row>
+              <Row label="Show “Saved” toast" hint="A small pill on the page after a capture">
+                <Switch label="Show Saved toast" checked={settings.showToast} onChange={(v) => set({ showToast: v })} />
+              </Row>
+            </>
+          )}
           <Row label="Skip secrets on auto-capture" hint="Keys, tokens and passwords are never saved">
             <Switch label="Skip secrets on auto-capture" checked={settings.skipSecrets} onChange={(v) => set({ skipSecrets: v })} />
           </Row>
@@ -302,7 +488,7 @@ export function SettingsSheet({ open, onClose, settings, onToast }: Props) {
           )}
         </Group>
 
-        <Group title="Paused sites" note="mouStache won’t capture copies on these sites.">
+        {!desktop && <Group title="Paused sites" note="mouStache won’t capture copies on these sites.">
           <div className="space-y-2.5 px-3.5 py-3">
             {paused.length === 0 && <p className="text-[12.5px] text-label-secondary">No paused sites.</p>}
             <div className="flex flex-wrap gap-1.5">
@@ -351,7 +537,7 @@ export function SettingsSheet({ open, onClose, settings, onToast }: Props) {
               </button>
             )}
           </div>
-        </Group>
+        </Group>}
 
         <Group title="Your data">
           <button type="button" onClick={doExport} className="flex h-11 w-full items-center justify-between px-3.5 text-left text-[13px] hover:bg-hover">
@@ -365,12 +551,12 @@ export function SettingsSheet({ open, onClose, settings, onToast }: Props) {
           <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => void doImport(e.target.files?.[0])} />
         </Group>
 
-        <Group>
+        {!desktop && <Group>
           <button type="button" onClick={openShortcutsPage} className="flex h-11 w-full items-center justify-between px-3.5 text-left text-[13px] hover:bg-hover">
             Keyboard shortcuts
             <Icon name="external" size={14} className="text-label-secondary" />
           </button>
-        </Group>
+        </Group>}
 
         <Group title="Danger zone">
           {confirm === 'history' || confirm === 'all' ? (
