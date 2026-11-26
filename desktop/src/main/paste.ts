@@ -8,6 +8,7 @@
  *  - No native node modules: Windows uses one long-lived PowerShell (WScript.Shell.SendKeys), macOS uses osascript.
  */
 import { spawn, execFile, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { windowsPowerShellPath } from './powershell';
 import type { ForegroundApp } from './capture';
 
 export type PasteTarget = Pick<ForegroundApp, 'name' | 'pid' | 'handle'>;
@@ -59,7 +60,7 @@ function windowsExecutor(): PasteExecutor {
   let waiter: (() => void) | undefined;
 
   const start = () => {
-    const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-NoLogo', '-EncodedCommand', winActorEncoded()], {
+    const p = spawn(windowsPowerShellPath(), ['-NoProfile', '-NonInteractive', '-NoLogo', '-EncodedCommand', winActorEncoded()], {
       windowsHide: true,
     });
     p.stdout.setEncoding('utf8');
@@ -127,6 +128,8 @@ export const MAC_ACTIVATE_SCRIPT = 'on run argv\ntell application (item 1 of arg
 export function macActivateArgs(appName: string): string[] {
   // eslint-disable-next-line no-control-regex
   if (appName.length === 0 || appName.length > 200 || /[\u0000-\u001f]/.test(appName)) throw new Error('invalid app name');
+  // osascript parses its arguments: a name starting with "-" would be read as an option, not as data (F16)
+  if (appName.trimStart().startsWith('-')) throw new Error('invalid app name');
   return ['-e', MAC_ACTIVATE_SCRIPT, appName];
 }
 

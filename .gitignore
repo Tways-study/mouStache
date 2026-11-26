@@ -24,3 +24,4 @@ graphify-out/
 
 # electron-builder output
 release/
+release-test/

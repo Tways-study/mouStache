@@ -1,6 +1,7 @@
 import { clipboard, nativeImage, type NativeImage } from 'electron';
 import type { SaveResult } from '@/lib/messaging';
 import { processCapture, type CaptureOutcome } from './capture';
+import { isSafeImage } from './image-guard';
 import type { ForegroundDetector } from './foreground';
 import type { PresenceSettings } from './presence-settings';
 import type { EngineClient } from './router';
@@ -32,6 +33,8 @@ const electronReader: ClipboardReader = {
     for (const item of await clipboard.read()) {
       if (!item.types.includes('image/png')) continue;
       const png = Buffer.from(await (await item.getType('image/png')).arrayBuffer());
+      // another app wrote this: never let the decoder see a header that claims an absurd size (decompression bomb)
+      if (!isSafeImage(png)) return undefined;
       const img = nativeImage.createFromBuffer(png);
       if (img.isEmpty()) return undefined;
       return { key: imageKey(img), png: () => png };
@@ -49,6 +52,8 @@ export interface WatcherOptions {
   guard?: OwnWriteGuard;
   /** Called with every tick result except 'unchanged' (diagnostics / tests). */
   onTick?(r: TickResult): void;
+  /** Called after EVERY poll, including 'unchanged' ones (tests count polls to know a resume baseline has run). */
+  onPoll?(r: TickResult): void;
 }
 
 /** Polls the system clipboard every ~400 ms and sends new text/images to the engine window to be saved. */
@@ -99,7 +104,10 @@ export function createWatcher(o: WatcherOptions) {
         try {
           const r = await Promise.race([core.tick(), watchdog]);
           if (r === 'timeout') console.error('[mouStache] clipboard read timed out; continuing');
-          else if (r !== 'unchanged') o.onTick?.(r);
+          else {
+            o.onPoll?.(r);
+            if (r !== 'unchanged') o.onTick?.(r);
+          }
         } catch (e) {
           console.error('[mouStache] watcher tick failed', e);
         } finally {

@@ -26,6 +26,19 @@ files:
 
 artifactName: mouStache-${os}-${arch}-${version}.${ext}
 
+# Electron fuses, flipped in the packaged binary at build time (security review F14). A fused-off Electron ignores
+# ELECTRON_RUN_AS_NODE, NODE_OPTIONS and --inspect, so nobody can turn the released app into a plain Node shell or
+# attach a debugger through environment variables or flags, and it only ever loads app.asar (integrity-checked).
+# The packaged TEST build (electron-builder.test.yml) re-enables the two inspect-related fuses because Playwright
+# drives Electron through them; the RELEASE config must keep them off.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  grantFileProtocolExtraPrivileges: false # pages are served from moustache://app, never file://
+
 win:
   target:
     - target: nsis

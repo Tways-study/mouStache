@@ -16,12 +16,16 @@
     "desktop:dev": "electron-vite dev --config desktop/electron.vite.config.ts",
     "desktop:build": "electron-vite build --config desktop/electron.vite.config.ts",
     "desktop:typecheck": "tsc --noEmit -p desktop/tsconfig.json",
-    "desktop:e2e": "npm run desktop:build && playwright test -c desktop/playwright.config.ts",
-    "desktop:pack": "npm run desktop:build && electron-builder --dir",
-    "desktop:dist:win": "npm run desktop:build && electron-builder --win --x64",
-    "desktop:dist:mac": "npm run desktop:build && electron-builder --mac --arm64 --x64",
+    "desktop:e2e": "npm run desktop:build:test && playwright test -c desktop/playwright.config.ts",
+    "desktop:pack": "npm run desktop:build && npm run desktop:check-release && electron-builder --dir && npm run desktop:check-fuses",
+    "desktop:dist:win": "npm run desktop:build && npm run desktop:check-release && electron-builder --win --x64 && npm run desktop:check-fuses",
+    "desktop:dist:mac": "npm run desktop:build && npm run desktop:check-release && electron-builder --mac --arm64 --x64",
     "desktop:screenshots": "node scripts/desktop-screenshots.mjs",
-    "desktop:e2e:packaged": "playwright test -c desktop/playwright.packaged.config.ts"
+    "desktop:e2e:packaged": "npm run desktop:pack:test && playwright test -c desktop/playwright.packaged.config.ts",
+    "desktop:build:test": "electron-vite build --config desktop/electron.vite.config.ts --mode test",
+    "desktop:check-release": "node scripts/check-release-bundle.mjs",
+    "desktop:pack:test": "npm run desktop:build:test && electron-builder --dir -c electron-builder.test.yml",
+    "desktop:check-fuses": "node scripts/check-fuses.mjs"
   },
   "dependencies": {
     "@shikijs/langs": "^4.6.0",

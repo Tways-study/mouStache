@@ -1,4 +1,4 @@
-// Regenerates docs/screenshots/desktop-*.png from the BUILT desktop app (run `npm run desktop:build` first).
+// Regenerates docs/screenshots/desktop-*.png from the BUILT desktop app (run `npm run desktop:build:test` first: it needs the test seams).
 //   npm run desktop:screenshots
 // Safety: a throwaway userData dir, MOUSTACHE_E2E=1 with the in-memory fake clipboard (the real clipboard is never read),
 // a pinned fake foreground app, and the pictures are page captures of mouStache's own windows (the real screen is never

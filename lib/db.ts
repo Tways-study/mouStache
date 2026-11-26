@@ -1,5 +1,7 @@
 import Dexie, { type Table } from 'dexie';
+import { classify } from './classify';
 import { blobToArrayBuffer, hashBlob, hashText } from './hash';
+import { TAG_META } from './tags';
 import type { ItemKind, StashItem, StashSource } from './types';
 
 class StashDB extends Dexie {
@@ -30,6 +32,11 @@ export type NewItemInput = Omit<StashItem, 'id' | 'createdAt' | 'updatedAt' | 'p
   Partial<Pick<StashItem, 'id' | 'createdAt' | 'updatedAt' | 'pinned' | 'secret' | 'tags'>>;
 
 export type AddItemResult = StashItem & { deduped?: boolean };
+
+/** Raster formats only. SVG can carry script and is never stored as an image item (security review F11). */
+export const IMAGE_MIMES: readonly string[] = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+export const isAllowedImageMime = (mime: string | undefined): boolean => !!mime && IMAGE_MIMES.includes(mime.toLowerCase());
+const ALLOWED_IMAGE_DATAURL = /^data:image\/(?:png|jpeg|webp|gif)[;,]/i;
 
 const blank = (s: string | undefined) => s === undefined || s === '';
 
@@ -290,10 +297,6 @@ export async function sanitizeImportedItem(raw: unknown): Promise<StashItem | nu
   };
   const text = str(r.text, MAX_IMPORT_TEXT);
   if (text !== undefined) item.text = text;
-  const lang = str(r.lang, 40);
-  if (lang) item.lang = lang;
-  const mime = str(r.mime, 100);
-  if (mime) item.mime = mime;
   if (typeof r.width === 'number' && Number.isFinite(r.width)) item.width = r.width;
   if (typeof r.height === 'number' && Number.isFinite(r.height)) item.height = r.height;
   if (typeof r.source === 'object' && r.source !== null) {
@@ -307,14 +310,30 @@ export async function sanitizeImportedItem(raw: unknown): Promise<StashItem | nu
     if (favicon) source.favicon = favicon;
     if (source.url || source.title || source.favicon) item.source = source;
   }
-  const imgUrl = typeof r.imageDataUrl === 'string' && r.imageDataUrl.startsWith('data:image/') ? r.imageDataUrl : undefined;
-  const thumbUrl = typeof r.thumbDataUrl === 'string' && r.thumbDataUrl.startsWith('data:image/') ? r.thumbDataUrl : undefined;
+  // raster images only: an exported SVG (or anything else) is not imported
+  const imgUrl = typeof r.imageDataUrl === 'string' && ALLOWED_IMAGE_DATAURL.test(r.imageDataUrl) ? r.imageDataUrl : undefined;
+  const thumbUrl = typeof r.thumbDataUrl === 'string' && ALLOWED_IMAGE_DATAURL.test(r.thumbDataUrl) ? r.thumbDataUrl : undefined;
   if (imgUrl) item.imageBlob = dataUrlToBlob(imgUrl);
   if (thumbUrl) item.thumbBlob = dataUrlToBlob(thumbUrl);
+  if (item.imageBlob) item.mime = item.imageBlob.type;
   if (item.kind === 'image' && !item.imageBlob) return null;
   if (item.kind !== 'image' && !item.text) return null;
-  const hash = str(r.hash, 200);
-  item.hash = hash || (item.kind === 'image' ? await hashBlob(item.imageBlob!) : await hashText(item.text!));
+
+  // Never trust what the file says about derived data (security review F4): the hash decides what a later copy
+  // dedupes onto, and tags / secret / lang decide what is shown, masked and skipped. Recompute them from the content.
+  item.hash = item.kind === 'image' ? await hashBlob(item.imageBlob!) : await hashText(item.text!);
+  const userTags = tags.filter((t) => !(t in TAG_META)); // tags the user made up; classifier tags are recomputed
+  if (item.kind === 'image') {
+    item.tags = ['image', ...(item.via === 'screenshot' ? ['screenshot'] : []), ...userTags].slice(0, 20);
+    item.secret = false;
+    delete item.lang;
+  } else {
+    const c = classify(item.text!);
+    item.tags = [...c.tags, ...userTags].slice(0, 20);
+    item.secret = c.secret || r.secret === true; // a file can mark more things secret, never fewer
+    if (c.lang) item.lang = c.lang;
+    else delete item.lang;
+  }
   return item;
 }
 

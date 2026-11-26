@@ -2,21 +2,43 @@
  * The extension -> desktop bridge: an HTTP server on 127.0.0.1 only. Electron-free (node:http only) so the whole
  * thing is unit- and integration-testable under plain Node. Wiring to the engine lives in bridge.ts.
  *
+ * The pairing token never crosses the wire. A client first POSTs a random nonce to /v1/hello and gets back a
+ * session plus HMAC(token, "srv|nonce|serverNonce"), which proves THIS server knows the token (a program squatting
+ * the port cannot). Every other request carries a session id, a timestamp, a unique sequence number and an HMAC over
+ * (method, path, timestamp, sequence, sha256(body)) made with a per-session key derived from the token. See
+ * lib/bridge-auth.ts for the exact construction.
+ *
  * Every request must pass, in this order:
  *   Host is 127.0.0.1:<port> or localhost:<port>      (DNS-rebinding defence)
  *   not an OPTIONS/CORS preflight                      (403, and no CORS headers are ever sent)
- *   Origin absent or chrome-extension://<id>           (no web page can call this, even with the token)
- *   known route                                        (GET /v1/ping, POST /v1/capture)
- *   rate limit, then Authorization: Bearer <token>     (constant-time compare)
+ *   Origin absent or chrome-extension://<id>           (no web page can call this)
+ *   known route                                        (POST /v1/hello, GET /v1/ping, POST /v1/capture)
+ *   rate limit; live session, fresh timestamp, unused sequence (BEFORE any body is read)
  *   Content-Type application/json, body within limits  (enforced while streaming)
- *   strict schema validation (lib/bridge.ts)
+ *   MAC verified in constant time, then strict schema validation (lib/bridge.ts)
  * Error bodies are fixed short codes: no stack traces, no echo of the request, and captured content is never logged.
  */
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { join } from 'node:path';
-import { BRIDGE_MAX_BODY, BRIDGE_PORT_TRIES, validateCapture, type BridgeCapture, type BridgePing } from '@/lib/bridge';
+import { BRIDGE_MAX_BODY, validateCapture, type BridgeCapture, type BridgePing } from '@/lib/bridge';
+import {
+  HEADER_MAC,
+  HEADER_SEQ,
+  HEADER_SESSION,
+  HEADER_TS,
+  HELLO_PATH,
+  MAX_SKEW_MS,
+  SESSION_TTL_MS,
+  constantTimeEqual,
+  isHex,
+  randomHex,
+  requestMac,
+  serverProof,
+  sessionKey,
+  sha256Hex,
+} from '@/lib/bridge-auth';
 
 // ---------------------------------------------------------------- token
 
@@ -43,9 +65,26 @@ export function createTokenStore(dir: string) {
     }
     return save(newToken());
   };
+  /**
+   * Atomic: write a temp file then rename it over the old one, so a crash never leaves a half-written token.
+   * File mode 0600 is applied best-effort (it protects the file on macOS/Linux; on Windows chmod only toggles the
+   * read-only bit, so the real protection there is the per-user profile folder's ACL).
+   */
   const save = (t: string): string => {
     mkdirSync(dir, { recursive: true });
-    writeFileSync(file, JSON.stringify({ token: t }), { mode: 0o600 });
+    const tmp = `${file}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
+    try {
+      writeFileSync(tmp, JSON.stringify({ token: t }), { mode: 0o600 });
+      try {
+        chmodSync(tmp, 0o600);
+      } catch {
+        /* best effort */
+      }
+      renameSync(tmp, file);
+    } catch (e) {
+      rmSync(tmp, { force: true });
+      throw e;
+    }
     return t;
   };
   return {
@@ -65,11 +104,6 @@ export function hostAllowed(host: string | undefined, port: number): boolean {
 /** Only browser-extension origins. A web page's origin (http, https, file, null, ...) is never accepted. */
 export function originAllowed(origin: string): boolean {
   return /^chrome-extension:\/\/[a-z]{32}$/.test(origin);
-}
-
-export function bearer(header: string | undefined): string | undefined {
-  const m = /^Bearer ([A-Za-z0-9_-]{16,200})$/.exec(header ?? '');
-  return m?.[1];
 }
 
 /** Token bucket per key. `now` is injectable for tests. */
@@ -166,46 +200,55 @@ function readBody(req: IncomingMessage, max: number, timeoutMs: number): Promise
   });
 }
 
+interface Session {
+  key: Uint8Array;
+  /** The token this session was derived from: a regenerated token ends every older session immediately. */
+  token: string;
+  expiresAt: number;
+  usedSeq: Set<number>;
+}
+const MAX_SESSIONS = 64;
+const MAX_SEQS_PER_SESSION = 4096;
+const HELLO_BODY_MAX = 512;
+const header = (req: IncomingMessage, name: string): string | undefined => {
+  const v = req.headers[name];
+  return typeof v === 'string' ? v : undefined;
+};
+
 export function createBridgeHandler(o: BridgeHandlerOptions) {
+  const now = o.now ?? Date.now;
   const limiterAuthed = createRateLimiter({ burst: o.ratePerSecond ?? 30, perSecond: o.ratePerSecond ?? 30, now: o.now });
-  const limiterAnon = createRateLimiter({ burst: 20, perSecond: 5, now: o.now }); // wrong/missing tokens
+  const limiterAnon = createRateLimiter({ burst: 20, perSecond: 5, now: o.now }); // hello + anything without a live session
   const bodyTimeout = o.bodyTimeoutMs ?? 8000;
+  const sessions = new Map<string, Session>();
 
-  async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    if (!hostAllowed(req.headers.host, o.getPort())) return fail(res, 403, 'bad_host');
-    if (req.method === 'OPTIONS') return fail(res, 403, 'forbidden'); // CORS preflight: never answered, no CORS headers
-    const origin = req.headers.origin;
-    if (origin !== undefined && !originAllowed(origin)) return fail(res, 403, 'bad_origin');
+  const prune = () => {
+    const t = now();
+    for (const [id, s] of sessions) if (s.expiresAt <= t) sessions.delete(id);
+    while (sessions.size >= MAX_SESSIONS) sessions.delete(sessions.keys().next().value as string); // oldest first
+  };
 
-    const path = (req.url ?? '').split('?')[0];
-    const route = path === '/v1/ping' ? 'ping' : path === '/v1/capture' ? 'capture' : undefined;
-    if (!route) return fail(res, 404);
-    if ((route === 'ping' && req.method !== 'GET') || (route === 'capture' && req.method !== 'POST')) {
-      return fail(res, 405, undefined, { Allow: route === 'ping' ? 'GET' : 'POST' });
-    }
+  /** Cheap checks done BEFORE the body is read: a live session for the current token, fresh timestamp, unused sequence. */
+  function precheck(req: IncomingMessage): { session: Session; id: string; ts: number; seq: number; mac: string } | undefined {
+    const id = header(req, HEADER_SESSION);
+    const tsRaw = header(req, HEADER_TS);
+    const seqRaw = header(req, HEADER_SEQ);
+    const mac = header(req, HEADER_MAC);
+    if (!isHex(id, 32) || !isHex(mac, 64) || !tsRaw || !seqRaw || !/^\d{1,15}$/.test(tsRaw) || !/^\d{1,9}$/.test(seqRaw)) return undefined;
+    const session = sessions.get(id);
+    if (!session || session.expiresAt <= now()) return undefined;
+    if (!tokensEqual(session.token, o.getToken())) return undefined; // token regenerated since the handshake
+    const ts = Number(tsRaw);
+    const seq = Number(seqRaw);
+    if (Math.abs(now() - ts) > MAX_SKEW_MS) return undefined;
+    if (seq < 1 || session.usedSeq.has(seq)) return undefined; // replay
+    return { session, id, ts, seq, mac };
+  }
 
-    const presented = bearer(req.headers.authorization);
-    const authed = presented !== undefined && tokensEqual(presented, o.getToken());
-    if (!(authed ? limiterAuthed : limiterAnon).allow(authed ? 'token' : 'anon')) {
-      return fail(res, 429, undefined, { 'Retry-After': '1' });
-    }
-    if (!authed) return fail(res, 401);
-
-    if (route === 'ping') {
-      return send(res, 200, { ok: true, app: 'mouStache', version: o.version } satisfies BridgePing);
-    }
-
+  async function hello(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const type = (req.headers['content-type'] ?? '').split(';')[0]!.trim().toLowerCase();
     if (type !== 'application/json') return fail(res, 415);
-    const declared = Number(req.headers['content-length'] ?? 0);
-    if (Number.isFinite(declared) && declared > BRIDGE_MAX_BODY) {
-      res.setHeader('Connection', 'close');
-      fail(res, 413);
-      res.once('finish', () => req.destroy());
-      return;
-    }
-
-    const got = await readBody(req, BRIDGE_MAX_BODY, bodyTimeout);
+    const got = await readBody(req, HELLO_BODY_MAX, bodyTimeout);
     if (!got.ok) {
       if (got.reason === 'aborted') return void req.destroy();
       res.setHeader('Connection', 'close');
@@ -213,10 +256,88 @@ export function createBridgeHandler(o: BridgeHandlerOptions) {
       res.once('finish', () => req.destroy());
       return;
     }
+    let nonce: unknown;
+    try {
+      nonce = (JSON.parse(got.body.toString('utf8')) as { nonce?: unknown }).nonce;
+    } catch {
+      return fail(res, 400, 'bad_json');
+    }
+    if (!isHex(nonce, 32)) return fail(res, 400, 'bad_nonce');
+    const token = o.getToken();
+    const serverNonce = randomHex(16);
+    const id = randomHex(16);
+    prune();
+    sessions.set(id, { key: await sessionKey(token, nonce, serverNonce), token, expiresAt: now() + SESSION_TTL_MS, usedSeq: new Set() });
+    send(res, 200, {
+      ok: true,
+      app: 'mouStache',
+      version: o.version,
+      session: id,
+      serverNonce,
+      proof: await serverProof(token, nonce, serverNonce),
+    });
+  }
+
+  async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (!hostAllowed(req.headers.host, o.getPort())) return fail(res, 403, 'bad_host');
+    if (req.method === 'OPTIONS') return fail(res, 403, 'forbidden'); // CORS preflight: never answered, no CORS headers
+    const origin = req.headers.origin;
+    if (origin !== undefined && !originAllowed(origin)) return fail(res, 403, 'bad_origin');
+
+    const url = req.url ?? '';
+    const path = url.split('?')[0];
+    const route = path === HELLO_PATH ? 'hello' : path === '/v1/ping' ? 'ping' : path === '/v1/capture' ? 'capture' : undefined;
+    if (!route) return fail(res, 404);
+    const want = route === 'ping' ? 'GET' : 'POST';
+    if (req.method !== want) return fail(res, 405, undefined, { Allow: want });
+    if (url.includes('?')) return fail(res, 400); // nothing in the query string is ever meaningful (and the MAC covers the path only)
+
+    if (route === 'hello') {
+      if (!limiterAnon.allow('anon')) return fail(res, 429, undefined, { 'Retry-After': '1' });
+      return hello(req, res);
+    }
+
+    // rate limit first (separate buckets: junk cannot starve the real client), then the cheap session checks
+    const pre = precheck(req);
+    if (!(pre ? limiterAuthed : limiterAnon).allow(pre ? 'token' : 'anon')) return fail(res, 429, undefined, { 'Retry-After': '1' });
+    if (!pre) return fail(res, 401);
+
+    let body: Buffer = Buffer.alloc(0);
+    if (route === 'capture') {
+      const type = (req.headers['content-type'] ?? '').split(';')[0]!.trim().toLowerCase();
+      if (type !== 'application/json') return fail(res, 415);
+      const declared = Number(req.headers['content-length'] ?? 0);
+      if (Number.isFinite(declared) && declared > BRIDGE_MAX_BODY) {
+        res.setHeader('Connection', 'close');
+        fail(res, 413);
+        res.once('finish', () => req.destroy());
+        return;
+      }
+      const got = await readBody(req, BRIDGE_MAX_BODY, bodyTimeout);
+      if (!got.ok) {
+        if (got.reason === 'aborted') return void req.destroy();
+        res.setHeader('Connection', 'close');
+        fail(res, got.reason === 'too_large' ? 413 : 408);
+        res.once('finish', () => req.destroy());
+        return;
+      }
+      body = got.body;
+    }
+
+    // verify the MAC in constant time (the sequence number is only burnt by a request that authenticates)
+    const expected = await requestMac(pre.session.key, { method: req.method ?? '', path: path ?? '', ts: pre.ts, seq: pre.seq, bodySha256: await sha256Hex(body) });
+    if (!constantTimeEqual(expected, pre.mac) || pre.session.usedSeq.has(pre.seq)) return fail(res, 401);
+    if (pre.session.usedSeq.size >= MAX_SEQS_PER_SESSION) {
+      sessions.delete(pre.id); // a very chatty session must shake hands again
+      return fail(res, 401);
+    }
+    pre.session.usedSeq.add(pre.seq);
+
+    if (route === 'ping') return send(res, 200, { ok: true, app: 'mouStache', version: o.version } satisfies BridgePing);
 
     let json: unknown;
     try {
-      json = JSON.parse(got.body.toString('utf8'));
+      json = JSON.parse(body.toString('utf8'));
     } catch {
       return fail(res, 400, 'bad_json');
     }
@@ -239,7 +360,7 @@ export function createBridgeHandler(o: BridgeHandlerOptions) {
 
 export interface RunningBridge {
   server: Server;
-  /** The port it actually bound (may differ from the preferred one). */
+  /** The port it bound (always the one that was asked for, or the OS's choice for port 0 in tests). */
   port: number;
   close(): Promise<void>;
 }
@@ -247,51 +368,46 @@ export interface RunningBridge {
 export type BridgeListenError = { code: string; message: string };
 
 /**
- * Listen on 127.0.0.1 ONLY. If the preferred port is taken, try the next few (`tries` in total). `port: 0` asks
- * the OS for a free one (tests). Rejects with {code,message} when nothing could be bound.
+ * Listen on 127.0.0.1 ONLY, on exactly the requested port. There is deliberately NO fallback to another port: a
+ * program squatting the configured port must produce a visible error, not silently move the app (and the extension's
+ * view of it) somewhere else. `port: 0` asks the OS for a free port (tests only). Rejects with {code,message}.
  */
 export async function startBridgeServer(
   handler: (req: IncomingMessage, res: ServerResponse) => void,
-  opts: { port: number; tries?: number },
+  opts: { port: number },
 ): Promise<RunningBridge> {
-  const tries = opts.port === 0 ? 1 : (opts.tries ?? BRIDGE_PORT_TRIES);
-  let lastCode = 'EADDRINUSE';
-  for (let i = 0; i < tries; i++) {
-    const port = opts.port === 0 ? 0 : opts.port + i;
-    if (port > 65535) break;
-    const server = createServer({ maxHeaderSize: 8192, requestTimeout: 10_000, headersTimeout: 5_000, keepAliveTimeout: 2_000 }, handler);
-    server.maxHeadersCount = 40;
-    try {
-      await new Promise<void>((resolve, reject) => {
-        server.once('error', reject);
-        server.listen({ port, host: '127.0.0.1', exclusive: true }, () => {
-          server.off('error', reject);
-          resolve();
-        });
+  const server = createServer({ maxHeaderSize: 8192, requestTimeout: 10_000, headersTimeout: 5_000, keepAliveTimeout: 2_000 }, handler);
+  server.maxHeadersCount = 40;
+  try {
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen({ port: opts.port, host: '127.0.0.1', exclusive: true }, () => {
+        server.off('error', reject);
+        resolve();
       });
-    } catch (e) {
-      lastCode = (e as NodeJS.ErrnoException).code ?? 'ERROR';
-      server.close();
-      if (lastCode !== 'EADDRINUSE' && lastCode !== 'EACCES') break;
-      continue;
-    }
-    const bound = (server.address() as { port: number }).port;
-    server.on('error', () => undefined); // a later socket error must not crash the app
-    return {
-      server,
-      port: bound,
-      close: () =>
-        new Promise<void>((resolve) => {
-          server.closeAllConnections();
-          server.close(() => resolve());
-        }),
-    };
+    });
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code ?? 'ERROR';
+    server.close();
+    throw {
+      code,
+      message:
+        code === 'EADDRINUSE'
+          ? `Port ${opts.port} is already in use by another program. Choose a different port here and in the extension (Settings > Desktop app).`
+          : code === 'EACCES'
+            ? `Port ${opts.port} is not allowed on this computer. Choose a different port here and in the extension.`
+            : `Could not listen on 127.0.0.1:${opts.port} (${code}).`,
+    } satisfies BridgeListenError;
   }
-  throw {
-    code: lastCode,
-    message:
-      lastCode === 'EADDRINUSE'
-        ? `Ports ${opts.port}-${opts.port + tries - 1} are all in use. Close the other program or choose another port.`
-        : `Could not listen on 127.0.0.1 (${lastCode}).`,
-  } satisfies BridgeListenError;
+  const bound = (server.address() as { port: number }).port;
+  server.on('error', () => undefined); // a later socket error must not crash the app
+  return {
+    server,
+    port: bound,
+    close: () =>
+      new Promise<void>((resolve) => {
+        server.closeAllConnections();
+        server.close(() => resolve());
+      }),
+  };
 }

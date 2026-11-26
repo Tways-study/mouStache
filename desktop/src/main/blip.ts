@@ -11,7 +11,9 @@ const SIZE = { width: 380, height: 44 };
  * The on-screen "Saved · SQL" pill. The window never takes focus (focusable:false + showInactive), is
  * click-through, hidden from the taskbar / Alt+Tab, and only ever receives a type label.
  */
-export function createBlip(o: { getSettings(): PresenceSettings; isSuppressed(): boolean; exposeForTests?: boolean }) {
+export function createBlip(o: { getSettings(): PresenceSettings; isSuppressed(): boolean }) {
+  /** Plain counters (cheap, harmless); test builds read them through testing.ts. */
+  const stats = { shows: 0, notifies: 0 };
   const win: BrowserWindow = createPlainWindow({
     show: false,
     ...SIZE,
@@ -57,8 +59,7 @@ export function createBlip(o: { getSettings(): PresenceSettings; isSuppressed():
       if (cmd.op === 'show' || cmd.op === 'update') {
         if (cmd.op === 'show') {
           place();
-          const t = (globalThis as unknown as Record<string, { shows?: number } | undefined>)['__mouBlip'];
-          if (t) t.shows = (t.shows ?? 0) + 1;
+          stats.shows++;
         }
         send({
           op: 'show',
@@ -73,23 +74,13 @@ export function createBlip(o: { getSettings(): PresenceSettings; isSuppressed():
     },
   });
 
-  if (o.exposeForTests) {
-    (globalThis as Record<string, unknown>)['__mouBlip'] = {
-      window: win,
-      flags: { ignoreMouseEvents: true, focusable: win.isFocusable() },
-      idle: () => scheduler.idle,
-      shows: 0, // how many pills have been shown (tests assert a skipped copy never adds one)
-      notifies: 0, // how many captures asked for feedback at all (a coalesced update is not a new pill)
-    };
-  }
-
   return {
     win,
     notify: (e: Parameters<typeof scheduler.notify>[0]) => {
-      const t = (globalThis as unknown as Record<string, { notifies?: number } | undefined>)['__mouBlip'];
-      if (t && o.exposeForTests) t.notifies = (t.notifies ?? 0) + 1;
+      stats.notifies++;
       return scheduler.notify(e);
     },
+    stats,
     announce: scheduler.announce,
     get idle() {
       return scheduler.idle;

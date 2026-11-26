@@ -1,5 +1,8 @@
-import { BrowserWindow, clipboard, ClipboardItem, nativeImage, screen } from 'electron';
+import { BrowserWindow, nativeImage, screen } from 'electron';
+import { classify } from '@/lib/classify';
 import { CH } from '../shared/api';
+import type { ClipboardOut } from './clipboard-out';
+import { isSafeImage } from './image-guard';
 import type { ForegroundDetector } from './foreground';
 import { choose, type ChooseOutcome, type ChooseRequest, type Content } from './paste-flow';
 import type { PasteExecutor, PasteTarget } from './paste';
@@ -20,8 +23,8 @@ export interface PaletteDeps {
   guard: OwnWriteGuard;
   /** Short, content-free feedback ("Copied", "Copied, press Ctrl+V"). */
   notify(text: string): void;
-  /** Replaces the OS clipboard in e2e (fake clipboard mode). */
-  clipboardOut?: { writeText(t: string): void; writePng(png: Buffer): void };
+  /** Where chosen items are written (the OS clipboard, or a fake in e2e). Secrets get the do-not-record formats and auto-clear. */
+  clipboardOut: ClipboardOut;
   accessibility?: Parameters<typeof choose>[1]['accessibility'];
   platform?: NodeJS.Platform;
 }
@@ -31,9 +34,11 @@ export function contentFromCopyItem(res: unknown): Content | undefined {
   const r = res as { ok?: boolean; kind?: string; text?: string; dataUrl?: string } | undefined;
   if (!r?.ok) return undefined;
   if (r.kind === 'image' && typeof r.dataUrl === 'string') {
-    const m = /^data:image\/[a-z+.-]+;base64,(.*)$/i.exec(r.dataUrl);
-    if (!m) return undefined;
-    const png = nativeImage.createFromBuffer(Buffer.from(m[1]!, 'base64')).toPNG(); // always hand the clipboard a PNG
+    const m = /^data:image\/(?:png|jpeg|webp|gif);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(r.dataUrl);
+    if (!m) return undefined; // no SVG, no other types
+    const bytes = Buffer.from(m[1]!, 'base64');
+    if (!isSafeImage(bytes)) return undefined; // a header claiming an absurd size would make the decoder allocate gigabytes
+    const png = nativeImage.createFromBuffer(bytes).toPNG(); // always hand the clipboard a PNG
     return png.length ? { kind: 'image', png } : undefined;
   }
   return typeof r.text === 'string' ? { kind: 'text', text: r.text } : undefined;
@@ -81,13 +86,13 @@ export function createPalette(d: PaletteDeps) {
     // mark BEFORE writing so the watcher can never see the write as a new copy
     if (c.kind === 'text') {
       d.guard.mark(textKey(normalizeText(c.text)));
-      if (d.clipboardOut) d.clipboardOut.writeText(c.text);
-      else await clipboard.writeText(c.text);
+      // a secret is written with the "do not record" formats and wiped from the clipboard after ~30 s
+      if (classify(c.text).secret) await d.clipboardOut.writeSecretText(c.text);
+      else await d.clipboardOut.writeText(c.text);
     } else {
-      const img = nativeImage.createFromBuffer(c.png);
-      d.guard.mark(imageKey(img));
-      if (d.clipboardOut) d.clipboardOut.writePng(c.png);
-      else await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(c.png)], { type: 'image/png' }) })]);
+      if (!isSafeImage(c.png)) throw new Error('image too large');
+      d.guard.mark(imageKey(nativeImage.createFromBuffer(c.png)));
+      await d.clipboardOut.writePng(c.png);
     }
   }
 

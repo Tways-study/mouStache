@@ -5,17 +5,17 @@ import path from 'node:path';
 
 /**
  * Smoke test of the PACKAGED app (electron-builder `--dir` output), not desktop/out run through `electron .`.
- * Build it first: `npm run desktop:pack`, then `npm run desktop:e2e:packaged`.
+ * Build it first: `npm run desktop:pack:test` (a test-seam build with the inspect fuses on; `npm run desktop:e2e:packaged` does both).
  * Override the executable with MOUSTACHE_PACKAGED_EXE. Uses a throwaway profile and the in-memory fake clipboard,
  * so it never touches the real clipboard, never sends keystrokes and never installs anything.
  */
 const EXE =
   process.env['MOUSTACHE_PACKAGED_EXE'] ??
   (process.platform === 'win32'
-    ? path.resolve('release/win-unpacked/mouStache.exe')
+    ? path.resolve('release-test/win-unpacked/mouStache.exe')
     : process.platform === 'darwin'
-      ? path.resolve(`release/mac${process.arch === 'arm64' ? '-arm64' : ''}/mouStache.app/Contents/MacOS/mouStache`)
-      : path.resolve('release/linux-unpacked/moustache'));
+      ? path.resolve(`release-test/mac${process.arch === 'arm64' ? '-arm64' : ''}/mouStache.app/Contents/MacOS/mouStache`)
+      : path.resolve('release-test/linux-unpacked/moustache'));
 
 type G = {
   __mouReady?: boolean;
@@ -40,12 +40,15 @@ async function findPage(suffix: string): Promise<Page> {
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async () => {
-  if (!existsSync(EXE)) throw new Error(`Packaged app not found at ${EXE}. Run "npm run desktop:pack" first.`);
+  if (!existsSync(EXE)) throw new Error(`Packaged app not found at ${EXE}. Run "npm run desktop:pack:test" first.`);
   profile = mkdtempSync(path.join(tmpdir(), 'moustache-e2e-packaged-'));
   app = await electron.launch({
     executablePath: EXE,
     env: {
       ...process.env,
+      // a packaged app must IGNORE this dev-server variable (security review F2); if it did not, the pages below would
+      // be requested from this dead address and the test would fail
+      ELECTRON_RENDERER_URL: 'http://127.0.0.1:9/',
       MOUSTACHE_USER_DATA: profile,
       MOUSTACHE_E2E: '1',
       MOUSTACHE_FAKE_CLIPBOARD: '1',
@@ -145,4 +148,12 @@ test('window is hardened and nothing threw in the renderer', async () => {
   expect(await panel.evaluate(() => typeof (globalThis as { require?: unknown }).require)).toBe('undefined');
   expect(await panel.evaluate(() => typeof (globalThis as { process?: unknown }).process)).toBe('undefined');
   expect(pageErrors).toEqual([]);
+});
+
+test('the packaged app ignores ELECTRON_RENDERER_URL, is named mouStache, and runs from app.asar (F2, F14)', async () => {
+  expect(panel.url().startsWith('moustache://app/')).toBe(true);
+  const info = await app.evaluate(({ app: a }) => ({ name: a.getName(), packaged: a.isPackaged, appPath: a.getAppPath() }));
+  expect(info.name).toBe('mouStache');
+  expect(info.packaged).toBe(true);
+  expect(info.appPath.toLowerCase()).toMatch(/app.asar$/);
 });

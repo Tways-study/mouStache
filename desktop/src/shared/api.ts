@@ -38,6 +38,8 @@ export const CH = {
   /** panel window only (Settings): bridge status + pairing token */
   bridgeInfo: 'bridge:info',
   bridgeRegenerate: 'bridge:regenerate',
+  /** panel only: put a SECRET on the clipboard with the "do not record" formats, auto-cleared after a while */
+  writeSecret: 'clipboard:write-secret',
 } as const;
 
 /** What Settings shows for the extension bridge. The token only ever goes to the panel window. */
@@ -128,6 +130,8 @@ export interface DesktopApi {
   /** Panel window only. */
   getBridgeInfo(): Promise<BridgeInfoDto | undefined>;
   regenerateBridgeToken(): Promise<BridgeInfoDto | undefined>;
+  /** Panel only. Resolves true when main wrote it (false = not allowed, write normally). */
+  writeSecret(text: string): Promise<boolean>;
 }
 
 declare global {

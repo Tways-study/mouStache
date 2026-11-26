@@ -48,6 +48,8 @@ export interface RegionDeps {
   onOutcome(o: CaptureOutcome): void;
   /** e2e: show without taking focus */
   inactive?: boolean;
+  /** Called with each overlay window right after it is created (main registers its role). */
+  onWindow?(win: BrowserWindow): void;
 }
 
 const PNG_PREFIX = 'data:image/png;base64,';
@@ -87,6 +89,7 @@ export function createRegion(d: RegionDeps) {
         title: 'mouStache screenshot',
       });
       win.setAlwaysOnTop(true, 'screen-saver');
+      d.onWindow?.(win);
       const w = win;
       await w.loadURL(pageUrl('region'));
       w.webContents.send(CH.regionShow, { dataUrl: PNG_PREFIX + shot.png.toString('base64') } satisfies RegionShow);

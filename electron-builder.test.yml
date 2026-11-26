@@ -1,0 +1,16 @@
+# PACKAGED TEST BUILD ONLY (npm run desktop:pack:test). Built from a --mode test bundle that contains the test seams,
+# so it must never be shipped. Differs from the release config in exactly two ways:
+#   1. output goes to release-test/ (never overwrites a release build)
+#   2. the Node inspect / NODE_OPTIONS fuses are ON, because Playwright launches Electron with --inspect and needs them.
+# Everything else (asar, integrity, runAsNode off, ...) is inherited so the test exercises the real packaging.
+extends: ./electron-builder.yml
+directories:
+  output: release-test
+  buildResources: desktop/build
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: true
+  enableNodeCliInspectArguments: true
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  grantFileProtocolExtraPrivileges: false

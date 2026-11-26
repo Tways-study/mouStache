@@ -3,6 +3,7 @@
  * desktop renderer entry, because `wxt/browser` captures `globalThis.chrome` at module-evaluation time.
  * Without the preload bridge (plain browser, demo screenshots) it does nothing.
  */
+import { classify } from '@/lib/classify';
 import { createChromeShim, type Transport } from './shim-core';
 
 declare const __APP_VERSION__: string | undefined;
@@ -18,7 +19,9 @@ function guardOwnClipboardWrites(api: NonNullable<Window['mouDesktop']>): void {
   const write = cb.write.bind(cb);
   Object.defineProperty(cb, 'writeText', {
     configurable: true,
-    value: (text: string) => {
+    value: async (text: string) => {
+      // a secret goes through main: do-not-record formats + auto-clear (the web API cannot set those)
+      if (classify(text).secret && (await api.writeSecret(text).catch(() => false))) return;
       api.markOwnWrite({ text });
       return writeText(text);
     },

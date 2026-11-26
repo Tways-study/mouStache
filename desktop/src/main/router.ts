@@ -81,9 +81,28 @@ export function routeMessage(
   return deps.engine.request(msg);
 }
 
-/** Only plain web links may leave the app. */
+/** Longest URL main will hand to the OS. */
+export const MAX_EXTERNAL_URL = 2048;
+
+/**
+ * At most one external link per `minGapMs` (default 2 s): a compromised page must not be able to spray the
+ * user's browser with tabs. `allow()` consumes the slot only when it returns true.
+ */
+export function createExternalLimiter(minGapMs = 2000, now: () => number = Date.now) {
+  let last = -Infinity;
+  return {
+    allow(): boolean {
+      const t = now();
+      if (t - last < minGapMs) return false;
+      last = t;
+      return true;
+    },
+  };
+}
+
+/** Only plain, reasonably short web links may leave the app. */
 export function isSafeExternalUrl(url: unknown): url is string {
-  if (typeof url !== 'string') return false;
+  if (typeof url !== 'string' || url.length === 0 || url.length > MAX_EXTERNAL_URL) return false;
   try {
     const u = new URL(url);
     return u.protocol === 'https:' || u.protocol === 'http:';

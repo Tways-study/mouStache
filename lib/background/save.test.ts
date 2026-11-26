@@ -30,7 +30,7 @@ vi.mock('../classify', () => ({
 
 import { db, countItems } from '../db';
 import { _setOpenPanels, getUnseen } from './badge';
-import { isPausedHost, isSingleUrl, saveText, stripUrl } from './save';
+import { isPausedHost, isSingleUrl, saveImage, saveText, stripUrl } from './save';
 import { DEFAULT_SETTINGS } from '../types';
 
 const SETTINGS_KEY = 'stash:settings';
@@ -134,5 +134,18 @@ describe('privacy defaults', () => {
     await saveText('some text', { url: 'https://a.com/p?token=1#x' }, 'context-menu');
     const [it1] = await db.items.toArray();
     expect(it1!.source?.url).toBe('https://a.com/p');
+  });
+});
+
+describe('saveImage refuses non-raster images (security review F11)', () => {
+  it.each(['image/svg+xml', 'text/html', 'application/pdf'])('rejects %s and stores nothing', async (type) => {
+    const r = await saveImage(new Blob(['<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>'], { type }), undefined, 'copy');
+    expect(r).toMatchObject({ ok: false, error: 'Unsupported image type' });
+    expect(await countItems()).toBe(0);
+  });
+  it('rejects an SVG data URL too', async () => {
+    const r = await saveImage('data:image/svg+xml;base64,PHN2Zy8+', undefined, 'copy');
+    expect(r.ok).toBe(false);
+    expect(await countItems()).toBe(0);
   });
 });

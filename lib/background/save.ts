@@ -1,5 +1,5 @@
 import { classify } from '../classify';
-import { addItem, dataUrlToBlob, enforceMaxItems } from '../db';
+import { addItem, dataUrlToBlob, enforceMaxItems, isAllowedImageMime } from '../db';
 import { hashBlob, hashText } from '../hash';
 import { sendToTab, type SaveResult, type SaveVia } from '../messaging';
 import { getSettings } from '../settings';
@@ -107,6 +107,7 @@ export async function saveImage(
     if (isPausedHost(hostOf(source?.url), settings.pausedHosts)) return { ok: true, skipped: 'paused' };
 
     const mime = blob.type || 'image/png';
+    if (!isAllowedImageMime(mime)) return { ok: false, error: 'Unsupported image type' }; // no SVG, no HTML sneaking in as an "image"
     const hash = await hashBlob(blob);
     const { thumbBlob, width, height } = await makeThumb(blob);
     const tags = via === 'screenshot' ? ['image', 'screenshot'] : ['image'];

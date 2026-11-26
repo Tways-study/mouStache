@@ -37,6 +37,7 @@ const api: DesktopApi = {
   getHotkeyStatus: () => ipcRenderer.invoke(CH.hotkeyStatus),
   getBridgeInfo: () => ipcRenderer.invoke(CH.bridgeInfo),
   regenerateBridgeToken: () => ipcRenderer.invoke(CH.bridgeRegenerate),
+  writeSecret: (text) => ipcRenderer.invoke(CH.writeSecret, text),
 };
 
 contextBridge.exposeInMainWorld('mouDesktop', api);

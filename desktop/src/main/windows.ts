@@ -1,11 +1,23 @@
-import { BrowserWindow, shell, type BrowserWindowConstructorOptions } from 'electron';
+import { app, BrowserWindow, shell, type BrowserWindowConstructorOptions } from 'electron';
 import { join } from 'node:path';
 import icon from '../../../public/icon/128.png?asset';
-import { isSafeExternalUrl } from './router';
+import { createExternalLimiter, isSafeExternalUrl } from './router';
 
 /** Renderer origin: the dev server while developing, the privileged `moustache://app` scheme otherwise. */
 export const APP_SCHEME = 'moustache';
-export const DEV_URL = process.env['ELECTRON_RENDERER_URL'];
+/**
+ * The Vite dev server, development only. A packaged app ignores ELECTRON_RENDERER_URL entirely: otherwise anything
+ * that can set an environment variable could make the app load (and trust) an arbitrary page (security review F2).
+ */
+export const DEV_URL = app.isPackaged ? undefined : process.env['ELECTRON_RENDERER_URL'];
+
+/** At most one external link per 2 s, from the panel only (window.open from the panel and the open-external IPC share it). */
+const externalLimiter = createExternalLimiter(2000);
+export function openExternalLimited(url: unknown): boolean {
+  if (!isSafeExternalUrl(url) || !externalLimiter.allow()) return false;
+  void shell.openExternal(url);
+  return true;
+}
 /** `URL.origin` is "null" for custom schemes, so compare protocol + host ourselves. */
 export const originOf = (url: string): string => {
   const u = new URL(url);
@@ -25,12 +37,14 @@ const secureWebPreferences: BrowserWindowConstructorOptions['webPreferences'] = 
   webSecurity: true,
   allowRunningInsecureContent: false,
   spellcheck: false,
+  // no DevTools (and so no F12 / Ctrl+Shift+I) in a released build; test builds keep them for the Playwright attach
+  devTools: !app.isPackaged || __MOU_TEST_BUILD__,
 };
 
-/** No popups, no navigation away from our own pages; web links open in the default browser. */
-function lockDown(win: BrowserWindow): void {
+/** No popups, no navigation away from our own pages. Only the panel may hand a (rate-limited, http/https) link to the OS. */
+function lockDown(win: BrowserWindow, opts: { externalLinks?: boolean } = {}): void {
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (isSafeExternalUrl(url)) void shell.openExternal(url);
+    if (opts.externalLinks) openExternalLimited(url);
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (e, url) => {
@@ -81,7 +95,7 @@ export function createPanelWindow(isQuitting: () => boolean): PanelHandle {
     webPreferences: { ...secureWebPreferences, backgroundThrottling: false },
   });
   win.removeMenu();
-  lockDown(win);
+  lockDown(win, { externalLinks: true });
   win.on('close', (e) => {
     if (isQuitting()) return;
     e.preventDefault();

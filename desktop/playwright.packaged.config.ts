@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
-// Smoke test of the PACKAGED app (release/win-unpacked/mouStache.exe). Run `npm run desktop:pack` first.
+// Smoke test of the PACKAGED app (release-test/win-unpacked/mouStache.exe, built with test seams by `npm run desktop:pack:test`).
 // Run with `npm run desktop:e2e:packaged`.
 export default defineConfig({
   testDir: '../tests/desktop',

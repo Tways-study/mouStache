@@ -82,3 +82,16 @@ describe('recording executor (what e2e uses instead of real keystrokes)', () => 
     await expect(createRecordingPasteExecutor([], 'win32').paste({ name: 'x1', handle: '1; calc' })).rejects.toThrow();
   });
 });
+
+describe('osascript option injection (security review F16)', () => {
+  it.each(['-e', '-e do shell script "x"', '--help', '-', ' -x', '\t-e'.trim(), '  --version'])('rejects the app name %j (it would be parsed as an option)', (name) => {
+    expect(() => macActivateArgs(name)).toThrow('invalid app name');
+  });
+  it('still accepts normal names that merely contain a hyphen', () => {
+    expect(macActivateArgs('Visual-Studio Code')[2]).toBe('Visual-Studio Code');
+    expect(macActivateArgs('1Password - Password Manager')[2]).toBe('1Password - Password Manager');
+  });
+  it('the recording executor refuses such names exactly like the real one', async () => {
+    await expect(createRecordingPasteExecutor([], 'darwin').paste({ name: '-e' })).rejects.toThrow();
+  });
+});

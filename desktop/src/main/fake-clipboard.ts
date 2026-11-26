@@ -1,5 +1,5 @@
 /**
- * In-memory clipboard for e2e (MOUSTACHE_E2E=1 + MOUSTACHE_FAKE_CLIPBOARD=1 only).
+ * In-memory clipboard for e2e (test builds with MOUSTACHE_E2E=1 + MOUSTACHE_FAKE_CLIPBOARD=1 only).
  *
  * The real OS clipboard is a machine-wide shared resource: anything else running on the machine (another app,
  * another agent, the developer) can change it between a test's write and the watcher's next poll. Behavioural e2e
@@ -9,6 +9,7 @@
 import { nativeImage } from 'electron';
 import type { ClipboardReader, ImageSnapshot } from './watcher-core';
 import { CONCEALED_FORMATS } from './watcher-core';
+import { secretFormats, type ClipboardPrimitives } from './secret-clipboard';
 import { imageKey } from './watcher';
 
 export function createFakeClipboard() {
@@ -20,7 +21,7 @@ export function createFakeClipboard() {
     hasImage: async () => st.image !== undefined,
     readImage: async () => st.image,
   };
-  return {
+  const api = {
     reader,
     writeText(text: string) {
       st.text = text;
@@ -32,6 +33,17 @@ export function createFakeClipboard() {
       st.image = undefined;
       st.formats = new Set([CONCEALED_FORMATS[2]]);
     },
+    /** Same as the real thing: text plus the do-not-record formats mouStache writes for a secret. */
+    writeSecretText(text: string) {
+      st.text = text;
+      st.image = undefined;
+      st.formats = new Set(Object.keys(secretFormats(process.platform)));
+    },
+    clear() {
+      st.text = '';
+      st.formats.clear();
+      st.image = undefined;
+    },
     /** Palette output: a PNG written by mouStache itself. */
     writePng(png: Buffer) {
       const img = nativeImage.createFromBuffer(png);
@@ -42,6 +54,7 @@ export function createFakeClipboard() {
     /** What is on the fake clipboard now (tests assert on it). */
     snapshot: () => ({
       text: st.text,
+      formats: [...st.formats].sort(),
       hasImage: st.image !== undefined,
       imageSize: st.image ? nativeImage.createFromBuffer(st.image.png()).getSize() : undefined,
     }),
@@ -52,7 +65,18 @@ export function createFakeClipboard() {
       st.formats.clear();
       st.image = { key: imageKey(img), png: () => png };
     },
+    /** The write side as the primitives main uses (so palette / panel writes land here in e2e). */
+    primitives(): ClipboardPrimitives {
+      return {
+        writeText: (t) => api.writeText(t),
+        writeSecretText: (t) => api.writeSecretText(t),
+        writePng: (p) => api.writePng(p),
+        readText: () => st.text,
+        clear: () => api.clear(),
+      };
+    },
   };
+  return api;
 }
 
 export type FakeClipboard = ReturnType<typeof createFakeClipboard>;

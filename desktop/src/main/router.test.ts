@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEngineClient, isBroadcast, isSafeExternalUrl, routeMessage } from './router';
+import { createEngineClient, createExternalLimiter, isBroadcast, isSafeExternalUrl, MAX_EXTERNAL_URL, routeMessage } from './router';
 
 describe('isBroadcast', () => {
   it('flags fan-out messages only', () => {
@@ -86,5 +86,33 @@ describe('isSafeExternalUrl', () => {
     expect(isSafeExternalUrl('javascript:alert(1)')).toBe(false);
     expect(isSafeExternalUrl('not a url')).toBe(false);
     expect(isSafeExternalUrl(42)).toBe(false);
+  });
+});
+
+describe('external links (security review F8)', () => {
+  it('caps the URL length at 2048 characters', () => {
+    const base = 'https://example.com/';
+    expect(MAX_EXTERNAL_URL).toBe(2048);
+    expect(isSafeExternalUrl(base + 'a'.repeat(MAX_EXTERNAL_URL - base.length))).toBe(true);
+    expect(isSafeExternalUrl(base + 'a'.repeat(MAX_EXTERNAL_URL - base.length + 1))).toBe(false);
+    expect(isSafeExternalUrl('')).toBe(false);
+  });
+
+  it('refuses every non-http(s) scheme', () => {
+    for (const u of ['ftp://example.com/', 'file:///etc/passwd', 'mailto:a@b.c', 'tel:123', 'ms-msdt:/id', 'vscode://file/x', 'data:text/html,x', 'chrome://settings', 'javascript:1', 'steam://run/1', '//example.com', 'example.com']) {
+      expect(isSafeExternalUrl(u), u).toBe(false);
+    }
+  });
+
+  it('allows one link per 2 s; a refused attempt does not consume the slot', () => {
+    let now = 10_000;
+    const l = createExternalLimiter(2000, () => now);
+    expect(l.allow()).toBe(true);
+    expect(l.allow()).toBe(false);
+    now += 1999;
+    expect(l.allow()).toBe(false);
+    now += 1;
+    expect(l.allow()).toBe(true);
+    expect(l.allow()).toBe(false);
   });
 });

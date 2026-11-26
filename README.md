@@ -254,4 +254,4 @@ A browser extension can't see copies made in VS Code, Cursor, a terminal or an L
 - Fullscreen and Do Not Disturb are not detected (pick Tray only if the pill gets in the way). Copying the exact same text twice in a row is not seen as a new copy.
 - Not yet verified by real use: pasting into Cursor, VS Code and terminals, and a real Chrome profile talking to an installed app.
 
-Build and release details: [desktop/README.md](desktop/README.md). Plan and status: [docs/desktop-roadmap.md](docs/desktop-roadmap.md).
+Build and release details: [desktop/README.md](desktop/README.md). Plan and status: [docs/desktop-roadmap.md](docs/desktop-roadmap.md). What the desktop app protects and what it does not: "Security model and known limits" in [desktop/README.md](desktop/README.md).

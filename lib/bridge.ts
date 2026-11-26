@@ -6,7 +6,6 @@ import { stripUrl } from './url';
 import type { StashSource } from './types';
 
 export const BRIDGE_DEFAULT_PORT = 47821;
-export const BRIDGE_PORT_TRIES = 5;
 export const BRIDGE_MAX_TEXT_BYTES = 1_000_000;
 export const BRIDGE_MAX_IMAGE_DATAURL = 15_000_000;
 /** Largest request body the server will ever buffer (image data URL plus JSON framing). */

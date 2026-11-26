@@ -17,10 +17,13 @@ const devCsp = (): Plugin => ({
   transformIndexHtml: (html) => html.replace("connect-src 'self'", "connect-src 'self' ws://localhost:* http://localhost:*"),
 });
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   main: {
     root: here,
     resolve: { alias },
+    // true ONLY with `--mode test` (desktop:build:test: e2e and packaged-test builds). Every release build gets the
+    // literal false, which dead-code-eliminates all test seams (see desktop/src/main/testing.ts).
+    define: { __MOU_TEST_BUILD__: JSON.stringify(mode === 'test') },
     build: {
       outDir: resolve(here, 'out/main'),
       rollupOptions: { input: resolve(here, 'src/main/index.ts') },
@@ -60,4 +63,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

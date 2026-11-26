@@ -1,8 +1,8 @@
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test';
 import { mkdtempSync, rmSync } from 'node:fs';
-import { request } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { rawCall, rawHello, rawSigned, type RawSession, type Res } from '../helpers/bridge-raw';
 
 // Phase 4: the extension -> desktop bridge, against the real built app. The app runs with MOUSTACHE_E2E=1 on a free
 // port (MOUSTACHE_BRIDGE_PORT=0), an in-memory clipboard and a pinned foreground app. Requests go over real HTTP
@@ -24,6 +24,7 @@ type G = {
   __mouBlip: { shows: number; notifies: number; idle(): boolean; window: Electron.BrowserWindow };
   __mouPending: () => number;
   __mouTicks: () => string[];
+  __mouPolls: () => number;
   __mouOutcomes: () => string[];
   __mouPresence: () => Record<string, unknown>;
   __mouForeground: (a: unknown) => void;
@@ -44,35 +45,45 @@ const search = () =>
       }) as Promise<Item[]>,
   );
 const outcomes = () => main((g) => g.__mouOutcomes());
+/**
+ * After capture is resumed the watcher's FIRST poll is only a baseline (whatever is on the clipboard then is not
+ * captured). Wait until two polls have completed so that baseline has certainly run before the test copies anything.
+ */
+async function afterResumeBaseline() {
+  const before = await main((g) => g.__mouPolls());
+  await expect.poll(() => main((g) => g.__mouPolls()), { timeout: 10_000 }).toBeGreaterThanOrEqual(before + 2);
+}
 const notifies = () => main((g) => g.__mouBlip.notifies);
 
-interface Res {
-  status: number;
-  headers: Record<string, string | string[] | undefined>;
-  json?: Record<string, unknown>;
+/** Signed session against the app. A new one is opened lazily and re-opened whenever the token changes. */
+let session: RawSession | undefined;
+let sessionToken = '';
+async function sessionFor(tok: string): Promise<RawSession> {
+  if (!session || sessionToken !== tok) {
+    const h = await rawHello(port, tok, { headers: { Origin: EXT_ORIGIN } });
+    if (!h.session) throw new Error('hello failed: ' + h.res.status);
+    session = h.session;
+    sessionToken = tok;
+    if (!session.serverVerified) throw new Error('the app did not prove it knows the token');
+  }
+  return session;
 }
-function http(o: { method?: string; path?: string; headers?: Record<string, string>; body?: unknown; auth?: string | false }): Promise<Res> {
-  return new Promise((resolve, reject) => {
-    const headers: Record<string, string> = { ...(o.headers ?? {}) };
-    if (o.auth !== false) headers['Authorization'] = `Bearer ${o.auth ?? token}`;
-    const body = o.body === undefined ? undefined : JSON.stringify(o.body);
-    if (body !== undefined) headers['Content-Type'] = headers['Content-Type'] ?? 'application/json';
-    const req = request({ host: '127.0.0.1', port, method: o.method ?? (body ? 'POST' : 'GET'), path: o.path ?? (body ? '/v1/capture' : '/v1/ping'), headers }, (res) => {
-      const parts: Buffer[] = [];
-      res.on('data', (c: Buffer) => parts.push(c));
-      res.on('end', () => {
-        let json: Record<string, unknown> | undefined;
-        try {
-          json = JSON.parse(Buffer.concat(parts).toString('utf8')) as Record<string, unknown>;
-        } catch {
-          /* not json */
-        }
-        resolve({ status: res.statusCode ?? 0, headers: res.headers, json });
-      });
-    });
-    req.on('error', reject);
-    req.end(body);
-  });
+/** GET /v1/ping or POST /v1/capture, signed. `auth: false` = no session headers at all; a string = a token the app does not know. */
+async function http(o: { method?: string; path?: string; headers?: Record<string, string>; body?: unknown; auth?: string | false }): Promise<Res> {
+  const method = o.method ?? (o.body !== undefined ? 'POST' : 'GET');
+  const path = o.path ?? (o.body !== undefined ? '/v1/capture' : '/v1/ping');
+  if (o.auth === false || method === 'OPTIONS') {
+    return rawCall(port, { method, path, headers: o.headers ?? {}, body: o.body === undefined ? undefined : JSON.stringify(o.body) });
+  }
+  const tok = o.auth ?? token;
+  let s: RawSession;
+  if (tok !== token) {
+    // a client that only knows a WRONG token: the app cannot be verified, so it would never send anything signed
+    const h = await rawHello(port, tok);
+    expect(h.session?.serverVerified).toBe(false);
+    s = { ...h.session!, serverVerified: false };
+  } else s = await sessionFor(tok);
+  return rawSigned(port, s, { method, path, body: o.body, headers: o.headers, contentType: o.headers?.['Content-Type'] });
 }
 const capture = (body: unknown, extra: { headers?: Record<string, string>; auth?: string | false } = {}) =>
   http({ body, headers: { Origin: EXT_ORIGIN, ...(extra.headers ?? {}) }, auth: extra.auth });
@@ -196,6 +207,7 @@ test('pause capture pauses the bridge too', async () => {
   expect(r.json).toEqual({ ok: true, skipped: 'paused' });
   expect((await search()).some((i) => i.text === 'sent while paused 98765')).toBe(false);
   await setSettings({ autoCapture: true });
+  await afterResumeBaseline();
   expect((await capture({ kind: 'text', text: 'sent after resume 98765' })).json).toMatchObject({ ok: true, deduped: false });
 });
 
@@ -254,13 +266,16 @@ test('Settings > Browser extension shows status and a masked token; Show reveals
   await expect(code).toHaveText(token);
 
   const oldToken = token;
+  const oldSession = await sessionFor(token); // a live, authenticated session from before the regenerate
+  expect((await rawSigned(port, oldSession)).status).toBe(200);
   await panel.getByRole('button', { name: 'Regenerate token' }).click();
   await panel.getByRole('button', { name: 'New token' }).click();
   await expect.poll(async () => (await bridgeInfo())!.token, { timeout: 5_000 }).not.toBe(oldToken);
   token = (await bridgeInfo())!.token;
   await expect(code).toHaveText(token);
 
-  expect((await http({ auth: oldToken })).status).toBe(401); // the old token is dead immediately
+  expect((await rawSigned(port, oldSession)).status).toBe(401); // the live session from the old token is dead immediately
+  expect((await http({ auth: oldToken })).status).toBe(401); // and a client that only knows the old token cannot use the app
   expect((await capture({ kind: 'text', text: 'old token capture' }, { auth: oldToken })).status).toBe(401);
   expect((await http({ auth: token })).status).toBe(200);
   expect((await search()).some((i) => i.text === 'old token capture')).toBe(false);
@@ -271,4 +286,55 @@ test('the port setting round-trips to the app and the server stays up (e2e runs 
   await setSettings({ bridgePort: 50321 });
   expect((await main((g) => g.__mouPresence()))['bridgePort']).toBe(50321);
   expect((await http({})).status).toBe(200); // the server is still up
+});
+
+test("the extension's own client library: Connected with the right token, Wrong token with another, nothing delivered to a stranger", async () => {
+  const { pingBridge, postCapture, _clearSessions } = await import('../../lib/bridge-client');
+  _clearSessions();
+  expect(await pingBridge({ port, token })).toMatchObject({ status: 'connected' });
+  expect((await pingBridge({ port, token: 'q'.repeat(43) })).status).toBe('wrong-token');
+  const before = (await search()).length;
+  expect(await postCapture({ port, token: 'q'.repeat(43) }, { kind: 'text', text: 'wrong token capture 4242', via: 'copy' })).toBe('down');
+  expect((await search()).length).toBe(before);
+  expect(await postCapture({ port, token }, { kind: 'text', text: 'right token capture 4242', via: 'copy', source: { url: 'https://example.com/ok?x=1', title: 'OK' } })).toBe('sent');
+  await expect.poll(async () => (await search()).some((i) => i.text === 'right token capture 4242' && i.source?.url === 'https://example.com/ok'), { timeout: 10_000 }).toBe(true);
+  _clearSessions();
+});
+
+test('a busy port is a visible error in Settings, not a silent move to another port', async () => {
+  const { createServer } = await import('node:http');
+  const blocker = createServer(() => undefined);
+  await new Promise<void>((r) => blocker.listen(0, '127.0.0.1', r));
+  const busy = (blocker.address() as { port: number }).port;
+  const dir = mkdtempSync(path.join(tmpdir(), 'moustache-e2e-busy-'));
+  const app2 = await electron.launch({
+    args: [ROOT],
+    env: { ...process.env, MOUSTACHE_USER_DATA: dir, MOUSTACHE_E2E: '1', MOUSTACHE_NO_FIRST_RUN: '1', MOUSTACHE_FAKE_CLIPBOARD: '1', MOUSTACHE_BRIDGE_PORT: String(busy) },
+  });
+  try {
+    const p2 = await (async () => {
+      for (let i = 0; i < 100; i++) {
+        const w = app2.windows().find((x) => x.url().endsWith('/panel.html'));
+        if (w) return w;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      throw new Error('panel2');
+    })();
+    await p2.waitForLoadState('domcontentloaded');
+    await expect
+      .poll(() => p2.evaluate(() => window.mouDesktop!.getBridgeInfo()).then((i) => i?.status), { timeout: 15_000 })
+      .toBe('error');
+    const info = (await p2.evaluate(() => window.mouDesktop!.getBridgeInfo()))!;
+    expect(info.port).toBeUndefined();
+    expect(info.error).toMatch(new RegExp(`Port ${busy} is already in use.*different port`));
+    // and it really did not wander off to the next port
+    const next = await rawCall(busy + 1, { path: '/v1/ping' }).catch(() => undefined);
+    expect(next?.json).toBeUndefined();
+    await p2.evaluate(() => window.dispatchEvent(new CustomEvent('stash:open-settings')));
+    await expect(p2.getByText(new RegExp(`Port ${busy} is already in use`))).toBeVisible();
+  } finally {
+    await app2.close();
+    await new Promise<void>((r) => blocker.close(() => r()));
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

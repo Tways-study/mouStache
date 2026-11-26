@@ -488,7 +488,7 @@ export function SettingsSheet({ open, onClose, settings, onToast }: Props) {
             >
               <span className={`size-2.5 shrink-0 rounded-full ${bridgeInfo?.status === 'listening' ? 'bg-[#34c759]' : bridgeInfo ? 'bg-tag-error' : 'bg-active'}`} aria-hidden="true" />
             </Row>
-            <Field label="Port" hint={bridgeInfo && bridgeInfo.port !== undefined && bridgeInfo.port !== settings.bridgePort ? `Using ${bridgeInfo.port} (${settings.bridgePort} was taken)` : undefined}>
+            <Field label="Port" hint={bridgeInfo?.status === 'error' ? 'In use: pick another port here and in the extension' : 'Must match the extension'}>
               <input
                 inputMode="numeric"
                 value={portInput}

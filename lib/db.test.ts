@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { StashItem } from './types';
-import { mergeSource, addItem, blobToDataUrl, clearAll, countItems, countOlderThan, db, deleteOlderThan, deleteItem, enforceMaxItems, exportAll, getItem, importAll, listItems, updateItem } from './db';
-import { hashText } from './hash';
+import type { StashExport } from './db';
+import { classify } from './classify';
+import { dataUrlToBlob, isAllowedImageMime, mergeSource, addItem, blobToDataUrl, clearAll, countItems, countOlderThan, db, deleteOlderThan, deleteItem, enforceMaxItems, exportAll, getItem, importAll, listItems, updateItem } from './db';
+import { hashBlob, hashText } from './hash';
 
 async function addText(text: string, extra: Partial<Parameters<typeof addItem>[0]> = {}) {
   return addItem({ kind: 'text', text, hash: await hashText(text), via: 'copy', ...extra });
@@ -83,7 +85,9 @@ describe('db', () => {
 
   it('export/import roundtrips text items', async () => {
     // distinct createdAt: items created in the same millisecond have no defined relative order after re-import
-    await addText('one', { tags: ['a'], lang: 'ts', pinned: true, source: { url: 'https://x.dev', title: 'X' }, createdAt: 1_000 });
+    // tags/lang are recomputed on import, so the original uses what the classifier would say plus a user-made tag
+    const c = classify('SELECT 1 FROM t;');
+    await addText('SELECT 1 FROM t;', { tags: [...c.tags, 'a'], lang: c.lang, pinned: true, source: { url: 'https://x.dev', title: 'X' }, createdAt: 1_000 });
     await addText('two', { createdAt: 2_000 });
     const dump = await exportAll();
     expect(dump.items).toHaveLength(2);
@@ -257,5 +261,82 @@ describe('mergeSource', () => {
   it('takes the incoming source when there is none, and ignores empty strings', () => {
     expect(mergeSource(undefined, { url: 'https://a.com/' })).toEqual({ url: 'https://a.com/' });
     expect(mergeSource({ url: '', title: '' }, { url: 'https://a.com/', title: 'A' })).toEqual({ url: 'https://a.com/', title: 'A', favicon: undefined });
+  });
+});
+
+describe('import never trusts derived data in the file (security review F4, F11)', () => {
+  const file = (items: unknown[]) => ({ app: 'stash', version: 1, exportedAt: 1, items }) as unknown as StashExport;
+  const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+
+  it('recomputes the hash from the content, so a forged hash cannot make a later copy dedupe onto the wrong item', async () => {
+    const forged = await hashText('something else entirely');
+    await importAll(file([{ kind: 'text', text: 'alpha', hash: forged, tags: [], createdAt: 5 }]));
+    const [imported] = await listItems();
+    expect(imported!.hash).toBe(await hashText('alpha'));
+    expect(imported!.hash).not.toBe(forged);
+
+    // the text the forged hash pointed at is a NEW item, not a dedupe onto "alpha"
+    const later = await addText('something else entirely');
+    expect(later.deduped).toBe(false);
+    expect(later.id).not.toBe(imported!.id);
+    expect(await countItems()).toBe(2);
+  });
+
+  it('an imported item whose hash was forged to collide is still skipped when the real content already exists', async () => {
+    await addText('already here');
+    const r = await importAll(file([{ kind: 'text', text: 'already here', hash: 'totally-different', tags: [] }]));
+    expect(r).toEqual({ imported: 0, skipped: 1 });
+    expect(await countItems()).toBe(1);
+  });
+
+  it('flags a secret even when the file says secret:false, and recomputes tags and language', async () => {
+    await importAll(
+      file([
+        { kind: 'text', text: 'aws_key = AKIAIOSFODNN7EXAMPLE', secret: false, tags: ['css', 'sql'], lang: 'css', hash: 'x' },
+        { kind: 'text', text: 'SELECT name FROM students WHERE gpa > 3.5;', secret: true, tags: ['python', 'my-own-tag'], lang: 'python' },
+      ]),
+    );
+    const items = await listItems();
+    const key = items.find((i) => i.text?.includes('AKIA'))!;
+    expect(key.secret).toBe(true);
+    expect(key.tags).toContain('secret');
+    expect(key.tags).not.toContain('css');
+    expect(key.lang).not.toBe('css');
+    const sql = items.find((i) => i.text?.startsWith('SELECT'))!;
+    expect(sql.tags).toContain('sql');
+    expect(sql.tags).not.toContain('python');
+    expect(sql.tags).toContain('my-own-tag'); // a tag the user made up survives
+    expect(sql.lang).toBe('sql');
+    expect(sql.secret).toBe(true); // a file may mark more things secret, never fewer
+  });
+
+  it('keeps the user-owned fields: pinned, createdAt, source, via', async () => {
+    await importAll(file([{ kind: 'text', text: 'docker ps', pinned: true, createdAt: 12345, via: 'context-menu', source: { url: 'https://a.com/x', title: 'A' } }]));
+    const [i] = await listItems();
+    expect(i).toMatchObject({ pinned: true, createdAt: 12345, via: 'context-menu', source: { url: 'https://a.com/x', title: 'A' } });
+  });
+
+  it('recomputes an image hash from its bytes and never imports an SVG or other non-raster image', async () => {
+    const svg = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>');
+    const r = await importAll(
+      file([
+        { kind: 'image', imageDataUrl: PNG, hash: 'forged-image-hash', mime: 'text/html' },
+        { kind: 'image', imageDataUrl: svg },
+        { kind: 'image', imageDataUrl: 'data:text/html;base64,PGI+' },
+        { kind: 'image', imageDataUrl: PNG, thumbDataUrl: svg, hash: 'again' },
+      ]),
+    );
+    expect(r.imported).toBe(1); // the second PNG is a duplicate of the first once the real hash is computed
+    const [img] = await listItems();
+    expect(img!.hash).toBe(await hashBlob(dataUrlToBlob(PNG)));
+    expect(img!.hash).not.toBe('forged-image-hash');
+    expect(img!.mime).toBe('image/png'); // taken from the bytes' data URL, not from the file's "mime"
+    expect(img!.thumbBlob).toBeUndefined();
+    expect(img!.tags).toContain('image');
+  });
+
+  it('isAllowedImageMime accepts raster formats only', () => {
+    for (const ok of ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'IMAGE/PNG']) expect(isAllowedImageMime(ok), ok).toBe(true);
+    for (const bad of ['image/svg+xml', 'text/html', 'application/pdf', '', undefined, 'image/']) expect(isAllowedImageMime(bad), String(bad)).toBe(false);
   });
 });

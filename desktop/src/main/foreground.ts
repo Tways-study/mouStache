@@ -8,20 +8,27 @@
  */
 import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import type { ForegroundApp } from './capture';
+import { windowsPowerShellPath } from './powershell';
 
 const MAX_AGE_MS = 2000; // a sample older than this is not trusted
 const WAIT_MS = 1500; // how long query() waits for the first/next sample
 
-const PS_SCRIPT = `
+/**
+ * The sampler must never outlive the app (security review F17). It ends when (1) the app's process is gone (the pid
+ * comes from the environment, not from the script text) or (2) writing to its stdout fails because the pipe closed.
+ */
+export const PS_SCRIPT = `
 $ErrorActionPreference='SilentlyContinue'
+$parent = 0
+[void][int]::TryParse($env:MOU_PARENT_PID, [ref]$parent)
 Add-Type -Namespace W -Name U -MemberDefinition '[DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow(); [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);'
 while ($true) {
+  if ($parent -le 0 -or -not (Get-Process -Id $parent)) { break }
   $p=[uint32]0
   $h=[W.U]::GetForegroundWindow()
   [void][W.U]::GetWindowThreadProcessId($h,[ref]$p)
   $n=(Get-Process -Id $p).ProcessName
-  [Console]::Out.WriteLine("FG|$p|$n|" + $h.ToInt64())
-  [Console]::Out.Flush()
+  try { [Console]::Out.WriteLine("FG|$p|$n|" + $h.ToInt64()); [Console]::Out.Flush() } catch { break }
   Start-Sleep -Milliseconds 300
 }
 `;
@@ -50,7 +57,7 @@ function windowsDetector(): ForegroundDetector {
 
   const start = () => {
     lastSpawn = Date.now();
-    const p = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-NoLogo', '-Command', '-'], { windowsHide: true });
+    const p = spawn(windowsPowerShellPath(), ['-NoProfile', '-NonInteractive', '-NoLogo', '-EncodedCommand', Buffer.from(PS_SCRIPT, 'utf16le').toString('base64')], { windowsHide: true, env: { ...process.env, MOU_PARENT_PID: String(process.pid) } });
     p.stdout.setEncoding('utf8');
     p.stdout.on('data', (d: string) => {
       buf += d;
@@ -72,7 +79,6 @@ function windowsDetector(): ForegroundDetector {
     p.on('exit', gone);
     p.on('error', gone);
     p.stdin.on('error', () => undefined);
-    p.stdin.write(PS_SCRIPT + '\n');
     ps = p;
   };
 

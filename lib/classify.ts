@@ -18,6 +18,12 @@ import { TAG_META } from './tags';
  */
 
 const MAX_ANALYZE = 20000;
+/**
+ * Secrets are looked for in the WHOLE text (up to this many characters, the largest thing any caller classifies):
+ * a key pasted after 20,000 characters of log output must still be caught. Every pattern below is therefore
+ * written with bounded repetition so scanning a hostile megabyte stays linear (see classify.test.ts).
+ */
+const MAX_SECRET_SCAN = 1_000_000;
 const MAX_TAGS = 6;
 const HEAD_CAP = 4000;
 
@@ -37,20 +43,20 @@ const SECRET_PATTERNS: RegExp[] = [
   /\bgh[pousr]_[A-Za-z0-9]{30,}\b/,
   /\bgithub_pat_[A-Za-z0-9_]{22,}/,
   /\bsk-ant-[A-Za-z0-9_-]{20,}/,
-  /\bsk-(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{20,}/,
+  /\bsk-(?=[A-Za-z0-9_-]{0,200}\d)[A-Za-z0-9_-]{20,}/,
   /\bxox[baprs]-[A-Za-z0-9-]{10,}/,
   /\bAIza[0-9A-Za-z_-]{35}\b/,
   /\b[sr]k_live_[0-9A-Za-z]{16,}/,
-  /\beyJ[A-Za-z0-9_-]{5,}\.eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}/,
+  /\beyJ[A-Za-z0-9_-]{5,8192}\.eyJ[A-Za-z0-9_-]{5,8192}\.[A-Za-z0-9_-]{5,}/,
   /-----BEGIN (?:[A-Z]+ )*PRIVATE KEY(?: BLOCK)?-----/,
 ];
 
 // password=..., "passwd": "...", pwd = '...' — value must be one token ending the line/statement
-const PASSWORD_ASSIGN = /(?<![a-z])(?:password|passwd|pwd)["']?\s*[=:]\s*(["']?)([^\s"']{4,})\1\s*(?:$|[;,&)\]}])/gim;
+const PASSWORD_ASSIGN = /(?<![a-z])(?:password|passwd|pwd)["']?\s*[=:]\s*(["']?)([^\s"']{4,256})\1\s*(?:$|[;,&)\]}])/gim;
 const KEY_ASSIGN =
-  /(?<![a-z])(?:api[_-]?key|secret[_-]?(?:access[_-]?)?key|access[_-]?token|auth[_-]?token|client[_-]?secret)["']?\s*[=:]\s*(["']?)([A-Za-z0-9_\-/+=.]{12,})\1\s*(?:$|[;,&)\]}])/gim;
-const RE_URL_WITH_CREDS = /\b[a-z][a-z0-9+.-]*:\/\/[^\s:@/<>]+:[^\s@/<>]+@\S*/gi;
-const URL_CREDS = /\b[a-z][a-z0-9+.-]*:\/\/[^\s:@/<>]+:([^\s@/<>]+)@[^\s/]+/i;
+  /(?<![a-z])(?:api[_-]?key|secret[_-]?(?:access[_-]?)?key|access[_-]?token|auth[_-]?token|client[_-]?secret)["']?\s*[=:]\s*(["']?)([A-Za-z0-9_\-/+=.]{12,512})\1\s*(?:$|[;,&)\]}])/gim;
+const RE_URL_WITH_CREDS = /\b[a-z][a-z0-9+.-]{0,31}:\/\/[^\s:@/<>]{1,256}:[^\s@/<>]{1,256}@\S*/gi;
+const URL_CREDS = /\b[a-z][a-z0-9+.-]{0,31}:\/\/[^\s:@/<>]{1,256}:([^\s@/<>]{1,256})@[^\s/]+/i;
 
 function detectSecret(t: string): boolean {
   for (const re of SECRET_PATTERNS) if (re.test(t)) return true;
@@ -573,7 +579,8 @@ export function classify(input: string): Classification {
 
   // heavy structural heuristics only look at the head of long texts (perf); secrets/network scan everything
   const head = t.length > HEAD_CAP ? t.slice(0, HEAD_CAP) : t;
-  const secret = detectSecret(t);
+  // secrets: the whole input, not just the analysed head
+  const secret = detectSecret(input.length > MAX_SECRET_SCAN ? input.slice(0, MAX_SECRET_SCAN) : input);
   if (secret) add('secret');
 
   const finish = (): Classification => {
