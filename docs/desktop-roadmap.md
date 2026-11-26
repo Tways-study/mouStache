@@ -15,7 +15,9 @@ cannot see. mouStache Desktop captures the **system clipboard** and offers a **g
 - Local only. No network except `127.0.0.1` for the extension bridge.
 - Internal ids stay `stash` (Dexie db name, `stash:*` storage keys, export `app:"stash"`); product name is **mouStache**.
 
-## Phase 1: scaffold + chrome shim (STATUS: delegated, in progress when this was written)
+## Phase 1: scaffold + chrome shim (STATUS: PARTIAL. The agent was stopped before finishing)
+
+Partial files exist under `desktop/src/` (`main/index.ts`, `main/router.ts`, `main/windows.ts`, `preload/index.ts`, `renderer/chrome-shim.ts`, `renderer/shim-core.ts`, `shared/api.ts`). There is no `desktop` entry in `package.json`, no electron dependency, no electron-vite config, no renderer HTML and no tests yet. Review these files, then finish Phase 1 (or restart it) per the list below.
 A Sonnet subagent was asked to: create `desktop/` (main, preload, renderer), an engine window that owns Dexie and runs
 `handleMessage()` from `lib/background/router.ts`, a `chrome` shim so the existing side-panel `App` runs unchanged, a tray stub,
 unit tests for the shim, a Playwright `_electron` smoke test (`tests/desktop/`), and scripts `desktop:dev`, `desktop:build`,
