@@ -31,6 +31,7 @@
 
 ## Contents
 
+- [Project status](#project-status)
 - [Why mouStache](#why-moustache)
 - [What it does](#what-it-does)
 - [Smart auto-tagging](#smart-auto-tagging)
@@ -45,6 +46,25 @@
 - [Develop and test](#develop-and-test)
 - [How it works](#how-it-works)
 - [Brand](#brand)
+
+## Project status
+
+**Current version: 0.2.0** (pre-release). Tags: `v0.2.0` for the extension and app, `desktop-v0.2.0` to build the installer in CI.
+
+The browser extension is feature-complete. The desktop app is built through packaging and has had an independent security review, but it is still **pre-release**.
+
+| Part | Status |
+| --- | --- |
+| **Browser extension** | Done: capture, auto-tagging, side panel, quick palette, comfort settings, export / import. |
+| **Desktop app, phases 1-3** | Done: Electron shell, system clipboard capture, tray and `Saved` pill, global palette with paste into the focused app, region screenshots. |
+| **Desktop app, phase 4** | Done: the optional extension bridge (loopback only, token handshake) so web copies arrive with their page. |
+| **Desktop app, phase 5a** | Done: Windows installer, macOS build config, packaged-app smoke tests, a CI workflow. |
+| **Security review** | Done: 19 findings (F1-F19) reviewed; most fixed with tests, the rest documented as known limits in [desktop/README.md](desktop/README.md#security-model-and-known-limits). |
+| **Not verified yet** | macOS, a real Chrome profile talking to an installed app, installer install / upgrade / uninstall, real paste into Cursor / VS Code, the CI workflow, code signing. |
+
+**Latest changes (0.2.0):** the installed desktop app now starts with Windows by default (once; your later choice is kept). The extension and the app now authenticate each other with a challenge-response handshake instead of sending the token, and a busy bridge port is a visible error instead of a silent fallback. Release builds are stripped of all test hooks and checked for it, and Electron fuses are set. The secret scan covers the whole text, imports are re-validated, SVG images are refused, and secrets copied by mouStache are wiped from the clipboard after about 30 seconds. The app is now named mouStache, with its data in `%APPDATA%\mouStache`.
+
+**Next:** try the desktop app on a Mac, run the CI workflow, test the installer's install / upgrade / uninstall, add code signing and auto-update, then publish to the Chrome / Edge stores. Details in [docs/desktop-roadmap.md](docs/desktop-roadmap.md).
 
 ## Why mouStache
 
@@ -120,6 +140,8 @@ Open **Settings > Comfort**. Everything applies live in the panel and on pages.
 - **Source URLs are trimmed** to the address without the query string or fragment.
 - **Pages can't read your history.** The palette runs in a closed shadow root, and forged copy events from a page are ignored.
 - **Abuse limits.** A page can add at most 10 items per 10 seconds, and untrusted events need a real user gesture.
+- **Imports are re-checked.** The hash, tags and secret flag in an import file are recomputed, not trusted, and only raster images are accepted.
+- **Desktop app:** secrets the app writes back to the clipboard use "do not record" formats and are wiped after about 30 seconds. See the [security model](desktop/README.md#security-model-and-known-limits) for what is and isn't protected.
 - Exports are plain JSON. Treat an export file like any other file that contains your copied text.
 
 ## Shortcuts
@@ -186,7 +208,7 @@ The app lives in the system tray, watches the system clipboard, and opens a glob
 1. mouStache starts in the tray. If you can't see the moustache icon, open the `^` overflow menu next to the clock and drag it onto the taskbar so it stays visible. A small pill points at it the first time.
 2. Copy text in any app. The tray icon curls for a moment and a small `Saved · SQL` pill appears in a screen corner (it never shows what you copied).
 3. Press `Alt+Shift+V` for the quick palette. Type to search, then press `Enter` to paste into the app you came from. `Shift+Enter` only copies, `Ctrl+Enter` pastes as a fenced code block.
-4. Click the tray icon to open the full panel. In **Settings > Desktop** you can turn on **Launch at login** and change the shortcuts, and **Settings > Presence** controls how noticeable the pill is.
+4. Click the tray icon to open the full panel. The installed app **starts with Windows** (hidden, in the tray) from its first launch; turn that off in **Settings > Desktop** or the tray menu (**Launch at login**), where you can also change the shortcuts, and **Settings > Presence** controls how noticeable the pill is.
 
 ### Pair the extension with the desktop app
 

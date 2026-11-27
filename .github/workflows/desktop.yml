@@ -1,5 +1,5 @@
 # Builds the mouStache Desktop installers. Nothing is published: artifacts are attached to the workflow run.
-# Triggers: a tag like desktop-v0.1.0, or run it by hand from the Actions tab.
+# Triggers: a tag like desktop-v0.2.0, or run it by hand from the Actions tab.
 # macOS signing and notarization only happen when the Apple secrets exist; otherwise the build is unsigned.
 name: Desktop
 

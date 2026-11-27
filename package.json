@@ -2,7 +2,7 @@
   "name": "stash",
   "description": "Your clipboard, well-groomed. A Chrome/Edge side-panel clipboard manager for IT students.",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",

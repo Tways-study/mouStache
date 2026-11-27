@@ -179,6 +179,19 @@ function onBridgeOutcome(o: CaptureOutcome): void {
   if (o.status === 'saved') giveFeedback(o, 'bridge');
 }
 
+/**
+ * Launch at login is on by default for an installed app: a clipboard history is only useful if it is already running.
+ * Done once (the user's later choice in Settings or the tray is never overridden) and never for dev or test runs.
+ */
+function enableLaunchAtLoginOnce(): void {
+  if (!app.isPackaged || devEnv('MOUSTACHE_NO_FIRST_RUN') === '1') return;
+  const flag = join(app.getPath('userData'), 'login-default.json');
+  if (existsSync(flag)) return;
+  app.setLoginItemSettings({ openAtLogin: true, args: ['--hidden'] });
+  mkdirSync(app.getPath('userData'), { recursive: true });
+  writeFileSync(flag, JSON.stringify({ setAt: Date.now() }));
+}
+
 function firstRunHint(): void {
   if (devEnv('MOUSTACHE_NO_FIRST_RUN') === '1') return;
   const flag = join(app.getPath('userData'), 'first-run.json');
@@ -384,6 +397,7 @@ if (!app.requestSingleInstanceLock()) {
       if (first) {
         watcher?.start(); // only once the engine has told us the real settings
         seams?.markReady();
+        enableLaunchAtLoginOnce();
         firstRunHint();
       }
     });
