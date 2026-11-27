@@ -334,8 +334,13 @@ test('region screenshot: Escape cancels and saves nothing', async () => {
   const outcomes0 = (await outcomes()).length;
   expect(await main((g) => g.__mouRegion.start())).toBe(true);
   const page = await findPage('/region.html');
-  await page.keyboard.press('Escape').catch(() => undefined); // the overlay closes itself mid-press
-  await expect.poll(() => main((g) => g.__mouRegion.window() === undefined), { timeout: 5_000 }).toBe(true);
+  // a key pressed before the overlay's React tree has mounted is lost (seen on slow CI runners), so keep pressing until it closes
+  await expect
+    .poll(async () => {
+      await page.keyboard.press('Escape').catch(() => undefined); // the overlay closes itself mid-press
+      return main((g) => g.__mouRegion.window() === undefined);
+    }, { timeout: 15_000 })
+    .toBe(true);
   expect((await search()).filter((i) => i.kind === 'image').length).toBe(before);
   expect((await outcomes()).length).toBe(outcomes0);
 });

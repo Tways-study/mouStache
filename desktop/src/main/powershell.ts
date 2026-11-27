@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { win32 } from 'node:path';
 
 /**
  * Windows PowerShell by absolute path (security review F15): a bare "powershell.exe" is resolved through the
@@ -12,7 +12,7 @@ export function windowsPowerShellPath(
 ): string {
   const root = env['SystemRoot'] ?? env['SYSTEMROOT'] ?? env['windir'] ?? env['WINDIR'];
   if (root && /^[A-Za-z]:\\/.test(root)) {
-    const full = join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+    const full = win32.join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
     if (exists(full)) return full;
   }
   return 'powershell.exe';
