@@ -1,0 +1,40 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: #1E1E1E; overflow: hidden; font-family: "Inter", sans-serif; }
+    #pa-tab { position: absolute; left: 120px; top: 110px; height: 64px; padding: 0 30px; background: #252526; border-top: 3px solid #0A84FF; display: flex; align-items: center; font-family: "JetBrains Mono", monospace; font-size: 26px; color: #E5E5EA; }
+    #pa-ed { position: absolute; left: 120px; top: 174px; width: 1020px; height: 760px; background: #252526; border-radius: 0 18px 18px 18px; padding-top: 36px; }
+    .pa-ln { height: 58px; display: flex; align-items: center; font-family: "JetBrains Mono", monospace; font-size: 30px; color: #D4D4D4; white-space: pre; position: relative; }
+    .pa-n { flex: none; width: 96px; text-align: right; padding-right: 30px; color: #7A7A7A; }
+    .pa-hl { position: absolute; left: 96px; right: 20px; top: 4px; bottom: 4px; background: rgba(10, 132, 255, 0.35); border-radius: 6px; }
+    .c { color: #6A9955; } .k { color: #569CD6; } .f { color: #DCDCAA; } .s { color: #CE9178; } .v { color: #9CDCFE; }
+    #pa-caret { display: inline-block; width: 3px; height: 36px; background: #E5E5EA; }
+    #pa-title { position: absolute; left: 1220px; top: 380px; width: 640px; font-weight: 900; font-size: 104px; line-height: 1; letter-spacing: -0.045em; color: #fff; }
+    #pa-title span { display: inline-block; }
+    #pa-title .acc { color: #4D9DFF; }
+    #pa-flood { position: absolute; inset: 0; background: #F5F5F7; }
+  </style>
+  <div id="root" data-composition-id="paste" data-width="1920" data-height="1080">
+    <div id="pa-tab">report.sql</div>
+    <div id="pa-ed">
+      <div class="pa-ln"><span class="pa-n">1</span><span><span class="c">-- weekly enrolment report</span></span></div>
+      <div class="pa-ln"><span class="pa-n">2</span><span><span id="pa-caret"></span></span></div>
+      <div class="pa-ln pa-new"><i class="pa-hl"></i><span class="pa-n">3</span><span><span class="k">SELECT</span> <span class="v">c</span>.name, <span class="f">COUNT</span>(<span class="v">e</span>.id) <span class="k">AS</span> enrolments</span></div>
+      <div class="pa-ln pa-new"><i class="pa-hl"></i><span class="pa-n">4</span><span><span class="k">FROM</span> courses <span class="v">c</span></span></div>
+      <div class="pa-ln pa-new"><i class="pa-hl"></i><span class="pa-n">5</span><span><span class="k">LEFT JOIN</span> enrolments <span class="v">e</span> <span class="k">ON</span> <span class="v">e</span>.course_id = <span class="v">c</span>.id</span></div>
+      <div class="pa-ln pa-new"><i class="pa-hl"></i><span class="pa-n">6</span><span><span class="k">WHERE</span> <span class="v">c</span>.semester = <span class="s">'2026S1'</span></span></div>
+      <div class="pa-ln pa-new"><i class="pa-hl"></i><span class="pa-n">7</span><span><span class="k">GROUP BY</span> <span class="v">c</span>.name</span></div>
+    </div>
+    <div id="pa-title"><span>Pasted</span> <span class="acc">back</span><br /><span>where</span> <span>you</span> <span>were.</span></div>
+    <div id="pa-flood"></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(["#pa-tab", "#pa-ed"], { opacity: 0, scale: 1.04 }, { opacity: 1, scale: 1, duration: 0.3, ease: "expo.out" }, 0);
+    tl.fromTo("#pa-caret", { opacity: 1 }, { opacity: 0, duration: 0.01 }, 0.2);
+    tl.fromTo(".pa-new", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.2, ease: "expo.out", stagger: 0.035 }, 0.2);
+    tl.fromTo(".pa-hl", { opacity: 1 }, { opacity: 0, duration: 0.7, ease: "power2.out" }, 0.45);
+    tl.fromTo("#pa-title span", { opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.15, stagger: 0.08 }, 0.45);
+    tl.fromTo("#pa-flood", { clipPath: "circle(0px at 960px 527px)" }, { clipPath: "circle(1250px at 960px 527px)", duration: 0.5, ease: "power2.inOut" }, 1.45);
+    window.__timelines["paste"] = tl;
+  </script>
+</template>

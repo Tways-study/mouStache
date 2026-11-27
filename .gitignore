@@ -25,3 +25,11 @@ graphify-out/
 # electron-builder output
 release/
 release-test/
+
+# Launch film project: keep the source, ignore renders and caches
+video/renders/
+video/.hyperframes/
+video/.thumbnails/
+video/.waveform-cache/
+video/AGENTS.md
+video/CLAUDE.md

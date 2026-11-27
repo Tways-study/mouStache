@@ -1,0 +1,37 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: #F5F5F7; overflow: hidden; }
+    #sn-page { position: absolute; left: 210px; top: 90px; width: 1500px; height: 900px; background: #fff; border-radius: 28px; box-shadow: 0 30px 70px rgba(20, 20, 40, 0.10); }
+    #sn-content { position: absolute; inset: 0; padding: 90px 150px; }
+    #sn-h { font-family: "EB Garamond", serif; font-weight: 700; font-size: 76px; color: #1C1C1E; letter-spacing: -0.01em; }
+    .sn-p { font-family: "EB Garamond", serif; font-size: 34px; line-height: 1.45; color: #3A3A3C; margin-top: 26px; max-width: 1180px; }
+    #sn-p2 { position: absolute; left: 150px; top: 690px; }
+    #sn-strip { position: absolute; left: 360px; top: 585px; width: 1200px; height: 110px; background: #121216; border-radius: 18px; display: flex; align-items: center; padding-left: 48px; font-family: "JetBrains Mono", monospace; font-size: 56px; color: #fff; }
+    #sn-strip .kw { color: #8FB4FF; }
+    .sn-cut { position: absolute; left: 350px; width: 1220px; height: 6px; background: repeating-linear-gradient(90deg, #3458F0 0 22px, transparent 22px 36px); border-radius: 3px; }
+    #sn-cut-a { top: 570px; }
+    #sn-cut-b { top: 704px; }
+  </style>
+  <div id="root" data-composition-id="snip" data-width="1920" data-height="1080">
+    <div id="sn-page">
+      <div id="sn-content">
+        <div id="sn-h">Understanding subnetting in 10 minutes</div>
+        <div class="sn-p">A /24 network has 256 addresses, of which 254 are usable. Copy the CIDR below into your notes, then practise splitting it into smaller blocks.</div>
+        <div class="sn-p" id="sn-p2">Routers use the prefix length to decide which bits belong to the network.</div>
+      </div>
+    </div>
+    <div class="sn-cut" id="sn-cut-a"></div>
+    <div class="sn-cut" id="sn-cut-b"></div>
+    <div id="sn-strip"><span class="kw">192.168.1.0</span>/24</div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo(["#sn-cut-a", "#sn-cut-b"], { scaleX: 0, transformOrigin: "0% 50%" }, { scaleX: 1, duration: 0.5, ease: "power1.inOut" }, 0.85);
+    tl.fromTo("#sn-content", { filter: "blur(0px)", opacity: 1 }, { filter: "blur(7px)", opacity: 0.55, duration: 0.25, ease: "power2.out" }, 1.35);
+    tl.fromTo(["#sn-cut-a", "#sn-cut-b"], { opacity: 1 }, { opacity: 0, duration: 0.12 }, 1.35);
+    tl.fromTo("#sn-strip", { y: 0, rotation: 0, boxShadow: "0 0px 0px rgba(20,20,40,0)" }, { y: -46, rotation: -2.5, boxShadow: "0 40px 60px rgba(20,20,40,0.35)", duration: 0.25, ease: "back.out(2)" }, 1.35);
+    tl.to("#sn-strip", { x: 1900, rotation: 4, duration: 0.36, ease: "power3.in" }, 1.6);
+    tl.fromTo("#sn-page", { x: 0 }, { x: -260, duration: 0.4, ease: "power3.in" }, 1.6);
+    window.__timelines["snip"] = tl;
+  </script>
+</template>

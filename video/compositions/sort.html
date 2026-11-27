@@ -1,0 +1,94 @@
+<template>
+  <style>
+    #root { position: absolute; inset: 0; background: #F5F5F7; overflow: hidden; font-family: "Inter", sans-serif; }
+    #so-panel { position: absolute; left: 1080px; top: 70px; width: 680px; height: 940px; }
+    #so-bg { position: absolute; inset: 0; background: #FAFAFC; border-radius: 36px; box-shadow: 0 40px 90px rgba(20, 20, 40, 0.16); }
+    #so-head { position: absolute; left: 28px; top: 22px; right: 28px; height: 52px; display: flex; align-items: center; gap: 14px; }
+    #so-head img { width: 46px; height: 46px; }
+    #so-name { font-weight: 700; font-size: 31px; color: #1C1C1E; letter-spacing: -0.02em; }
+    #so-path { font-family: "JetBrains Mono", monospace; font-size: 20px; color: #6E6E73; }
+    #so-search { position: absolute; left: 24px; right: 24px; top: 88px; height: 60px; border-radius: 16px; background: rgba(60, 60, 67, 0.07); display: flex; align-items: center; padding: 0 22px; gap: 14px; font-size: 24px; color: #6E6E73; }
+    #so-search .key { margin-left: auto; font-family: "JetBrains Mono", monospace; font-size: 18px; border: 1.5px solid #C7C7CC; border-radius: 7px; padding: 1px 9px; color: #6E6E73; }
+    #so-chips { position: absolute; left: 24px; top: 162px; display: flex; gap: 10px; }
+    .so-fchip { height: 48px; padding: 0 18px; border-radius: 24px; display: flex; align-items: center; gap: 8px; font-size: 21px; font-weight: 700; color: #3A3A3C; background: #fff; border: 1.5px solid #E5E5EA; }
+    .so-fchip.on { background: rgba(0, 122, 255, 0.12); color: #007AFF; border-color: rgba(0, 122, 255, 0.3); }
+    .so-fchip b { font-weight: 400; color: inherit; opacity: 0.75; }
+    .so-card { position: absolute; left: 24px; width: 632px; background: #fff; border-radius: 22px; box-shadow: 0 18px 40px rgba(20, 20, 40, 0.12); padding: 20px 22px; }
+    .so-code { background: #F5F5F7; border-radius: 12px; padding: 12px 16px; font-family: "JetBrains Mono", monospace; font-size: 24px; line-height: 1.38; color: #1C1C1E; white-space: pre; overflow: hidden; }
+    .so-prompt { font-size: 25px; line-height: 1.38; color: #1C1C1E; padding: 6px 2px; }
+    .so-meta { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 20px; color: #6E6E73; height: 34px; }
+    .so-tag { height: 34px; padding: 0 13px; border-radius: 10px; display: flex; align-items: center; font-weight: 700; font-size: 20px; }
+    .t-net { background: rgba(31, 158, 154, 0.12); color: #1F9E9A; }
+    .t-code { background: rgba(88, 86, 214, 0.12); color: #5856D6; }
+    .t-err { background: rgba(229, 56, 46, 0.12); color: #E5382E; }
+    .t-pr { background: rgba(175, 82, 222, 0.12); color: #AF52DE; }
+    .kw { color: #D12F2F; } .fn { color: #5856D6; }
+    #so-c1 { top: 228px; } #so-c2 { top: 392px; } #so-c3 { top: 592px; } #so-c4 { top: 792px; }
+    #so-title { position: absolute; left: 150px; top: 400px; width: 860px; font-weight: 900; font-size: 128px; line-height: 0.98; letter-spacing: -0.045em; color: #1C1C1E; }
+    #so-title span { display: inline-block; }
+    #so-title .acc { color: #3458F0; }
+    #so-sub { position: absolute; left: 156px; top: 680px; font-size: 36px; font-weight: 700; color: #6E6E73; letter-spacing: -0.01em; }
+    #so-flood { position: absolute; inset: 0; background: linear-gradient(135deg, #0A84FF, #5E5CE6); }
+  </style>
+  <div id="root" data-composition-id="sort" data-width="1920" data-height="1080">
+    <div id="so-title"><span>Every</span> <span>copy,</span><br /><span class="acc">tagged.</span></div>
+    <div id="so-sub">15 languages · networks · errors · prompts</div>
+    <div id="so-panel">
+      <div id="so-bg"></div>
+      <div id="so-head"><img src="assets/logo.svg" alt="" /><span id="so-name">mouStache</span><span id="so-path">~/moustache · 15</span></div>
+      <div id="so-search">⌕&nbsp; Search your mouStache…<span class="key">/</span></div>
+      <div id="so-chips">
+        <div class="so-fchip on">All <b>15</b></div>
+        <div class="so-fchip">Pinned <b>2</b></div>
+        <div class="so-fchip">Code <b>6</b></div>
+        <div class="so-fchip">Prompts <b>1</b></div>
+      </div>
+      <div class="so-card" id="so-c1">
+        <div class="so-code"><span class="fn">192.168.1.0</span>/24</div>
+        <div class="so-meta"><span class="so-tag t-net">IPv4</span><span class="so-tag t-net">Network</span><span class="so-m">now · docs.cisco.com</span></div>
+      </div>
+      <div class="so-card" id="so-c2">
+        <div class="so-code"><span class="kw">SELECT</span> c.name, <span class="fn">COUNT</span>(e.id)
+<span class="kw">FROM</span> courses c</div>
+        <div class="so-meta"><span class="so-tag t-code">SQL</span><span class="so-m">4m · dbfiddle.uk</span></div>
+      </div>
+      <div class="so-card" id="so-c3">
+        <div class="so-code"><span class="kw">TypeError</span>: Cannot read properties
+of undefined (reading 'map')</div>
+        <div class="so-meta"><span class="so-tag t-err">Stack trace</span><span class="so-tag t-err">Error</span><span class="so-m">1d</span></div>
+      </div>
+      <div class="so-card" id="so-c4">
+        <div class="so-prompt">Act as a senior reviewer. Review the…</div>
+        <div class="so-meta"><span class="so-tag t-pr">Prompt</span><span class="so-m">2h · chatgpt.com</span></div>
+      </div>
+    </div>
+    <div id="so-flood"></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // scattered landing spots: [dx, dy, rot] relative to each card's slot
+    const scatter = { "#so-c1": [-60, -98, -5], "#so-c2": [-700, 180, 5], "#so-c3": [-930, -452, -6], "#so-c4": [-20, -60, 7] };
+    const tapAt = { "#so-c1": 0.81, "#so-c3": 1.21, "#so-c2": 1.56, "#so-c4": 1.91 };
+    // c1 is the snipped strip: whips in from the right; the others fall from above
+    tl.fromTo("#so-c1", { x: 1400, y: -98, rotation: 10 }, { x: -60, y: -98, rotation: -5, duration: 0.42, ease: "expo.out" }, 0);
+    ["#so-c3", "#so-c2", "#so-c4"].forEach((id, i) => {
+      const [dx, dy, r] = scatter[id];
+      tl.fromTo(id, { x: dx, y: dy - 1100, rotation: r * 3 }, { x: dx, y: dy, rotation: r, duration: 0.5, ease: "power4.out" }, 0.12 + i * 0.11);
+    });
+    // tags pop when the stache lands on each card, the card straightens
+    Object.entries(tapAt).forEach(([id, t]) => {
+      tl.fromTo(id + " .so-tag", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: "back.out(2.6)", stagger: 0.05 }, t);
+      tl.fromTo(id + " .so-m", { opacity: 0 }, { opacity: 1, duration: 0.2 }, t + 0.05);
+      tl.to(id, { rotation: 0, duration: 0.45, ease: "elastic.out(1, 0.5)" }, t);
+    });
+    // cards fly into their column; the panel grows around them
+    ["#so-c1", "#so-c2", "#so-c3", "#so-c4"].forEach((id, i) => tl.to(id, { x: 0, y: 0, rotation: 0, duration: 0.55, ease: "power3.inOut" }, 2.05 + i * 0.05));
+    tl.fromTo("#so-bg", { clipPath: "inset(228px 0px 8px 0px round 22px)", opacity: 0 }, { clipPath: "inset(0px 0px 0px 0px round 36px)", opacity: 1, duration: 0.5, ease: "power3.out" }, 2.45);
+    tl.fromTo(["#so-head", "#so-search", "#so-chips"], { opacity: 0, filter: "blur(8px)", y: -14 }, { opacity: 1, filter: "blur(0px)", y: 0, duration: 0.3, ease: "power3.out", stagger: 0.07 }, 2.6);
+    tl.fromTo("#so-title span", { opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.16, ease: "power2.out", stagger: 0.09 }, 2.3);
+    tl.fromTo("#so-sub", { opacity: 0, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.2 }, 2.9);
+    // colour flood out of the stache (perched at 300,300)
+    tl.fromTo("#so-flood", { clipPath: "circle(0px at 300px 300px)" }, { clipPath: "circle(2300px at 300px 300px)", duration: 0.6, ease: "power2.inOut" }, 3.4);
+    window.__timelines["sort"] = tl;
+  </script>
+</template>
