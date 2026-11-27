@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mouStache: your clipboard, well-groomed</title>
+  <meta name="description" content="A clipboard manager for IT students. It saves what you copy, tags it as SQL, CIDR, stack trace or prompt, and pastes it back with Alt+Shift+V. Local only.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)">
+  <meta property="og:title" content="mouStache: your clipboard, well-groomed">
+  <meta property="og:description" content="Saves what you copy, tags it, and puts it back with one shortcut. Chrome, Edge and Windows.">
+  <meta property="og:image" content="https://tways-study.github.io/mouStache/site/media/poster.jpg">
+  <meta property="og:url" content="https://tways-study.github.io/mouStache/">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="site/logo.svg" type="image/svg+xml">
+  <link rel="preload" href="site/fonts/MonaSans-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="site/icons/regular/style.css">
+  <link rel="stylesheet" href="site/icons/bold/style.css">
+  <link rel="stylesheet" href="site/styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav">
+    <div class="wrap nav-row">
+      <a class="brand" href="#top" aria-label="mouStache home">
+        <img src="site/logo.svg" alt="" width="32" height="32">
+        <span>mou<b>S</b>tache</span>
+      </a>
+      <nav class="nav-links" aria-label="Sections">
+        <a href="#trail">How it works</a>
+        <a href="#tags">What it tags</a>
+        <a href="#private">Privacy</a>
+      </nav>
+      <a class="btn btn-small" href="https://github.com/Tways-study/mouStache"><i class="ph-bold ph-github-logo" aria-hidden="true"></i>Get it on GitHub</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero wrap" id="top">
+      <div class="hero-copy">
+        <h1>Copy it once.<br>Paste it anytime.</h1>
+        <p class="lede">mouStache saves what you copy, tags it as SQL, CIDR, stack trace or prompt, and puts it back with <span class="keys"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>V</kbd></span>.</p>
+        <div class="cta-row">
+          <a class="btn" href="https://github.com/Tways-study/mouStache"><i class="ph-bold ph-github-logo" aria-hidden="true"></i>Get it on GitHub</a>
+          <a class="btn btn-ghost" href="#trail">How it works<i class="ph ph-arrow-down" aria-hidden="true"></i></a>
+        </div>
+      </div>
+      <figure class="film">
+        <video id="film" src="site/media/moustache-15s.mp4" poster="site/media/poster.jpg" muted loop playsinline preload="metadata" aria-label="15 second film: the mouStache mascot snips a CIDR off a page, tags copied clips, opens the palette with Alt+Shift+V and pastes SQL back into an editor."></video>
+        <div class="film-controls">
+          <button class="film-btn" id="film-play" type="button" aria-label="Pause film"><i class="ph-bold ph-pause" aria-hidden="true"></i></button>
+          <button class="film-btn" id="film-sound" type="button" aria-label="Turn sound on"><i class="ph-bold ph-speaker-slash" aria-hidden="true"></i></button>
+        </div>
+      </figure>
+      <div class="thread-dock" aria-hidden="true">
+        <span class="thread-chip"><i class="ph ph-code"></i><code>SELECT c.name, COUNT(e.id) AS enrolments FROM courses c</code></span>
+      </div>
+    </section>
+
+    <section class="problem" aria-labelledby="problem-h">
+      <div class="wrap problem-stack">
+        <h2 id="problem-h">Your clipboard remembers exactly one thing.</h2>
+        <div class="overwrite" id="overwrite">
+          <code>docker run -p 8080:80 nginx</code>
+          <code>10.0.12.0/22</code>
+          <code>TypeError: Cannot read properties of undefined (reading 'map')</code>
+          <code>SELECT * FROM networks WHERE cidr = '192.168.1.0/24';</code>
+          <code>SELECT c.name, COUNT(e.id) AS enrolments FROM courses c</code>
+        </div>
+        <p class="problem-after">Copy the next thing and the last one is gone. Your browser history forgets the rest. mouStache keeps every one of them.</p>
+      </div>
+    </section>
+
+    <section class="trail" id="trail" aria-labelledby="trail-h">
+      <div class="wrap">
+        <h2 id="trail-h">How a copy gets back to you.</h2>
+        <div class="trail-grid">
+          <ol class="steps">
+            <li class="step" data-step="0">
+              <h3>Copy the way you already do.</h3>
+              <p>Select and press <span class="keys"><kbd>Ctrl</kbd><kbd>C</kbd></span>, or hit a site's own Copy button. mouStache saves it and says so.</p>
+              <picture class="step-shot"><img src="screenshots/overlay-toast.png" alt="A tutorial page with a SQL line copied and a small Copied toast at the bottom" width="1100" height="720" loading="lazy"></picture>
+            </li>
+            <li class="step" data-step="1">
+              <h3>It knows what it is looking at.</h3>
+              <p>Each copy is tagged on the spot, on your device. Code gets syntax highlighting and line numbers in the side panel.</p>
+              <picture class="step-shot"><source srcset="screenshots/panel-dark.png" media="(prefers-color-scheme: dark)"><img src="screenshots/panel-light.png" alt="The mouStache side panel with tagged code, command and SQL cards" width="420" height="760" loading="lazy"></picture>
+            </li>
+            <li class="step" data-step="2">
+              <h3>Press <span class="keys"><kbd>Alt</kbd><kbd>Shift</kbd><kbd>V</kbd></span> on any page.</h3>
+              <p>The quick palette opens over what you are doing. Type to search, use the arrow keys, press Enter.</p>
+              <picture class="step-shot"><source srcset="screenshots/overlay-palette-dark.png" media="(prefers-color-scheme: dark)"><img src="screenshots/overlay-palette-light.png" alt="The quick palette open over a web page, listing SQL, IPv4, prompt, link and error items" width="1100" height="720" loading="lazy"></picture>
+            </li>
+            <li class="step" data-step="3">
+              <h3>Back in the field you came from.</h3>
+              <p><kbd>Enter</kbd> pastes, <span class="keys"><kbd>Shift</kbd><kbd>Enter</kbd></span> copies, <span class="keys"><kbd>Ctrl</kbd><kbd>Enter</kbd></span> pastes a fenced code block. The desktop app does the same in VS Code, Cursor or a terminal.</p>
+              <picture class="step-shot"><img src="screenshots/desktop-palette.png" alt="The desktop app's palette with a SQL item selected and paste, copy and code block shortcuts in the footer" width="640" height="440" loading="lazy"></picture>
+            </li>
+          </ol>
+          <div class="stage" aria-hidden="true">
+            <div class="stage-chip" id="stage-chip">
+              <span class="chip-state">
+                <span class="state" data-s="0"><i class="ph-bold ph-check-circle"></i>Copied on the page</span>
+                <span class="state" data-s="1"><span class="tag t-code">SQL</span>Tagged in the panel</span>
+                <span class="state" data-s="2"><i class="ph-bold ph-magnifying-glass"></i>Found in the palette</span>
+                <span class="state" data-s="3"><i class="ph-bold ph-arrow-bend-down-left"></i>Pasted back</span>
+              </span>
+            </div>
+            <div class="stage-frame">
+              <picture class="shot" data-s="0"><img src="screenshots/overlay-toast.png" alt="" width="1100" height="720"></picture>
+              <picture class="shot shot-tall" data-s="1"><source srcset="screenshots/panel-dark.png" media="(prefers-color-scheme: dark)"><img src="screenshots/panel-light.png" alt="" width="420" height="760"></picture>
+              <picture class="shot" data-s="2"><source srcset="screenshots/overlay-palette-dark.png" media="(prefers-color-scheme: dark)"><img src="screenshots/overlay-palette-light.png" alt="" width="1100" height="720"></picture>
+              <picture class="shot shot-mid" data-s="3"><img src="screenshots/desktop-palette.png" alt="" width="640" height="440"></picture>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tags" id="tags" aria-labelledby="tags-h">
+      <div class="wrap">
+        <h2 id="tags-h">Tagged before you even look.</h2>
+        <p class="section-lede">Every capture is classified locally. Tags show as coloured chips and drive the filters.</p>
+        <div class="bento">
+          <article class="cell c-code">
+            <h3><span class="tag t-code">Code</span></h3>
+            <p>15 languages, shell commands, JSON and YAML.</p>
+            <pre><code><span class="k">def</span> fib(n: <span class="k">int</span>) -&gt; <span class="k">int</span>:
+    <span class="k">return</span> n <span class="k">if</span> n &lt; 2 <span class="k">else</span> fib(n-1) + fib(n-2)</code></pre>
+          </article>
+          <article class="cell c-net">
+            <h3><span class="tag t-net">Network</span></h3>
+            <p>IPv4, IPv6, CIDR, masks, MACs, ports and Cisco IOS.</p>
+            <pre><code><span class="n">192.168.1.0/24</span>
+interface Gi0/1
+ ip address <span class="n">10.0.0.1 255.255.255.0</span></code></pre>
+          </article>
+          <article class="cell c-err">
+            <h3><span class="tag t-err">Errors</span></h3>
+            <p>Error messages and stack traces.</p>
+            <pre><code><span class="e">TypeError</span>: Cannot read properties
+of undefined (reading 'map')</code></pre>
+          </article>
+          <article class="cell c-pr">
+            <h3><span class="tag t-pr">Prompts</span></h3>
+            <p>Instructions like "act as" or "your task is".</p>
+            <blockquote>Act as a senior reviewer. Review the following {{language}} code for bugs.</blockquote>
+          </article>
+          <article class="cell c-link">
+            <h3><span class="tag t-link">Links</span></h3>
+            <p>URLs and email addresses.</p>
+            <pre><code><span class="u">developer.mozilla.org/en-US/docs/Web/API/Clipboard_API</span></code></pre>
+          </article>
+          <article class="cell c-data">
+            <h3><span class="tag t-data">Data</span></h3>
+            <p>Regex, hex colours, UUIDs, hashes, base64, timestamps.</p>
+            <pre><code><span class="d">#3458F0</span>
+^[\w.-]+@[\w-]+\.\w+$</code></pre>
+          </article>
+          <article class="cell c-secret">
+            <h3><span class="tag t-secret">Secrets</span></h3>
+            <p>API keys, tokens and JWTs, blurred until you reveal them.</p>
+            <pre class="blurred" aria-label="A blurred API key"><code>eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZW1vIn0</code></pre>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="private" id="private" aria-labelledby="private-h">
+      <div class="wrap private-grid">
+        <div class="private-head">
+          <svg class="mascot" viewBox="30.5 66.3 67 20.1" aria-hidden="true"><use class="ml" href="site/stache.svg#l"/><use class="mr" href="site/stache.svg#r"/></svg>
+          <h2 id="private-h">It stays on your laptop.</h2>
+        </div>
+        <dl class="facts">
+          <div><dt><i class="ph ph-wifi-slash" aria-hidden="true"></i>No network calls</dt><dd>Tagging runs on your device. Your history never leaves it.</dd></div>
+          <div><dt><i class="ph ph-password" aria-hidden="true"></i>Secrets skipped</dt><dd>API keys, tokens and password-manager pages are not saved by default.</dd></div>
+          <div><dt><i class="ph ph-timer" aria-hidden="true"></i>Wiped after use</dt><dd>A secret you copy back out of mouStache is cleared from the clipboard after about 30 seconds.</dd></div>
+          <div><dt><i class="ph ph-export" aria-hidden="true"></i>Yours to take</dt><dd>Export your history as JSON any time, and import it on another machine.</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="get" id="get" aria-labelledby="get-h">
+      <div class="wrap get-grid">
+        <div>
+          <h2 id="get-h">Build it in a few minutes.</h2>
+          <p class="section-lede">Version 0.2.0 is a pre-release and not on a store yet, so you build it from source. You need Git and Node.js 24.</p>
+          <ul class="platforms">
+            <li><i class="ph ph-browser" aria-hidden="true"></i><span><b>Browser extension</b> for Chrome and Edge 116 or newer</span></li>
+            <li><i class="ph ph-desktop" aria-hidden="true"></i><span><b>Desktop app</b> for Windows, catching copies from every app</span></li>
+          </ul>
+        </div>
+        <div class="terminal">
+          <div class="term-bar"><span>Terminal</span><button class="copy" type="button" id="copy-cmds"><i class="ph ph-copy" aria-hidden="true"></i><span>Copy</span></button></div>
+<pre id="cmds"><code><span class="p">$</span> git clone https://github.com/Tways-study/mouStache.git
+<span class="p">$</span> cd mouStache
+<span class="p">$</span> npm install
+<span class="p">$</span> npm run build</code></pre>
+          <p class="term-note">Then load <code>.output/chrome-mv3</code> from <code>chrome://extensions</code> with Developer mode on. The README has the desktop installer steps.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="close" aria-labelledby="close-h">
+      <div class="wrap close-inner">
+        <img class="close-logo" src="site/logo.svg" alt="" width="120" height="120">
+        <h2 id="close-h">Your clipboard, well-groomed.</h2>
+        <a class="btn btn-light" href="https://github.com/Tways-study/mouStache"><i class="ph-bold ph-github-logo" aria-hidden="true"></i>Get it on GitHub</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot-row">
+      <span class="brand brand-sm"><img src="site/logo.svg" alt="" width="22" height="22"><span>mou<b>S</b>tache</span></span>
+      <span>Chrome, Edge and Windows. Safari and Firefox are not supported.</span>
+      <a href="https://github.com/Tways-study/mouStache#readme">Read the README</a>
+    </div>
+  </footer>
+
+  <script src="site/main.js" defer></script>
+</body>
+</html>
