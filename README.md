@@ -166,7 +166,19 @@ mouStache comes in two parts that work on their own or together:
 | **Browser extension** | web pages in Chrome and Edge | Windows, macOS, Linux (Chrome / Edge 116 or newer) |
 | **Desktop app** | every app: VS Code, Cursor, terminals, chat apps | Windows (tested); macOS (written, **untested**) |
 
-Neither is on a store yet, so you build them from source (the desktop installer can also come from a CI run). Safari and Firefox are not supported.
+Neither is on a store yet, so you build them from source (the desktop installer can also come from a CI run). Safari and Firefox are not supported. There is also a [landing page](https://tways-study.github.io/mouStache/) with a 15 second film of the app.
+
+### Quick start
+
+With [Git](https://git-scm.com/) and [Node.js](https://nodejs.org/) 24 installed:
+
+```bash
+git clone https://github.com/Tways-study/mouStache.git && cd mouStache && npm install
+npm run build              # browser extension: then Load unpacked > .output/chrome-mv3
+npm run desktop:dist:win   # Windows desktop app: then run release/mouStache-Setup-<version>.exe
+```
+
+You only need the line for the part you want. The detailed steps, first launch, pairing and macOS are below.
 
 ### Before you start
 
