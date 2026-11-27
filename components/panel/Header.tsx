@@ -30,23 +30,45 @@ export function Header({
   const [searchFocused, setSearchFocused] = useState(false);
   const showRecent = searchFocused && query === '' && recent.length > 0;
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!menu) return;
+    const items = () => Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+    items()[0]?.focus({ preventScroll: true });
+    const close = (refocus: boolean) => {
+      setMenu(false);
+      if (refocus) triggerRef.current?.focus({ preventScroll: true });
+    };
     const onDown = (e: MouseEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setMenu(false);
+      if (!menuRef.current?.contains(e.target as Node)) close(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        setMenu(false);
+        close(true);
+        return;
       }
+      if (e.key === 'Tab') return close(false);
+      const list = items();
+      if (!list.length || !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+      e.preventDefault();
+      e.stopPropagation(); // keep App's J/K list navigation from also firing
+      const cur = list.indexOf(document.activeElement as HTMLElement);
+      const next =
+        e.key === 'Home' ? 0 : e.key === 'End' ? list.length - 1 : (cur + (e.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length;
+      list[next]?.focus({ preventScroll: true });
     };
+    const onHide = () => close(false);
     document.addEventListener('mousedown', onDown);
     window.addEventListener('keydown', onKey, true);
+    window.addEventListener('blur', onHide);
+    window.addEventListener('resize', onHide);
     return () => {
       document.removeEventListener('mousedown', onDown);
       window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('blur', onHide);
+      window.removeEventListener('resize', onHide);
     };
   }, [menu]);
 
@@ -67,6 +89,7 @@ export function Header({
 
         <div className="relative" ref={menuRef}>
           <button
+            ref={triggerRef}
             type="button"
             className="icon-btn"
             aria-label="Add to mouStache"
@@ -80,7 +103,7 @@ export function Header({
           {menu && (
             <div
               role="menu"
-              className="pop vibrancy glass absolute right-0 top-9 z-30 w-[262px] rounded-xl border border-separator p-1 shadow-modal"
+              className="pop vibrancy glass absolute right-0 top-9 z-30 w-[262px] max-w-[calc(100vw-24px)] rounded-xl border border-separator p-1 shadow-modal"
             >
               <MenuItem
                 icon="camera"

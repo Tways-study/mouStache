@@ -13,7 +13,8 @@ interface SheetProps {
 }
 
 /**
- * Full-height slide-over inside the side panel. Slides from the right (220ms ease-out), dims the
+ * Full-height slide-over inside the side panel. Always anchored to the right edge: full width in a narrow
+ * panel, capped at 480px in a wide or full-screen window. Slides from the right (220ms ease-out), dims the
  * content behind it, traps focus loosely (focus moves in, returns on close) and unmounts after exit.
  * Esc handling lives in App so nested sheets close in the right order.
  */
@@ -58,7 +59,7 @@ export function Sheet({ open, onClose, title, crumb, actions, children, footer }
         aria-label={title}
         tabIndex={-1}
         data-state={open ? 'open' : 'closed'}
-        className="sheet-panel absolute inset-y-0 right-0 flex w-full max-w-[480px] flex-col bg-surface shadow-modal outline-none sm:left-[6%] sm:w-auto"
+        className="sheet-panel absolute inset-y-0 right-0 flex w-full max-w-[480px] flex-col bg-surface shadow-modal outline-none"
       >
         <header className="vibrancy glass flex shrink-0 items-center gap-2 border-b border-separator px-3 py-2.5">
           <button
