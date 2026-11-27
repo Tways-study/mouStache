@@ -70,6 +70,8 @@ The browser extension is feature-complete. The desktop app is built through pack
 
 Studying IT means copying all day: a `docker run` line, a subnet, a stack trace, a SQL query, a prompt you spent ten minutes on. The system clipboard remembers exactly one thing, and your browser history forgets the rest. mouStache keeps it, sorts it, and makes it easy to find again.
 
+**The name.** "mouStache" is a hint at *stash*: the app stashes everything you copy. It's also a nod to me, the developer, who happens to have a moustache. That's why the logo and mascot are a moustache.
+
 - **Hard to forget.** It lives in the browser side panel, shows a toolbar badge for new captures, and opens a Spotlight-style palette from anywhere with `Alt+Shift+V`.
 - **Understands IT content.** It knows a Cisco command from a CIDR block from a Python function, and tags each one.
 - **Quiet and private.** Everything stays on your device. Secrets and password-manager pages are skipped by default.
