@@ -61,6 +61,13 @@ test.beforeAll(async () => {
   panel.on('pageerror', (e) => pageErrors.push(String(e)));
   await panel.waitForLoadState('domcontentloaded');
   await expect.poll(() => main((g) => g.__mouReady === true), { timeout: 20_000 }).toBe(true);
+  // the panel is shown for this test, so on a runner it is the real foreground window and a copy would be skipped as
+  // "own-app"; pin a fake editor in front, like the other desktop suites do
+  await app.evaluate((_e, v) => (globalThis as unknown as { __mouForeground(a: unknown): void }).__mouForeground(v), {
+    name: 'FakeEditor',
+    pid: 4242,
+    handle: '777001',
+  });
 });
 
 test.afterAll(async () => {
