@@ -85,7 +85,7 @@ Studying IT means copying all day: a `docker run` line, a subnet, a stack trace,
 | **Screenshots** | Capture the visible tab, or drag a region with `Alt+Shift+S`. |
 | **Paste into the panel** | Paste text or an image (for example from `Win+Shift+S`). A "Paste from clipboard" button does the same. |
 
-Then you can **search** (text, tags, languages, source sites), **filter** by type, **pin** what matters, **delete with undo**, edit tags, and **copy back** as raw text or as a fenced Markdown code block.
+Then you can **search** (text, tags, languages, source sites), **filter** by type (including a **Text** filter for plain copied text only), **pin** what matters, **delete with undo**, edit tags, and **copy back** as raw text or as a fenced Markdown code block.
 
 <p align="center">
   <img src="docs/screenshots/comfort-compact.png" alt="Compact density with many items" width="31%">
@@ -96,6 +96,8 @@ Then you can **search** (text, tags, languages, source sites), **filter** by typ
 ## Smart auto-tagging
 
 Every capture is classified locally, with no network calls. Tags show as coloured chips and drive the filter bar.
+
+Text items also get a short title (derived locally from the first line, a function/class name, or the SQL verb and table) so they're easy to recognise at a glance. Secrets show only "Secret".
 
 | Group | Detected |
 | --- | --- |
