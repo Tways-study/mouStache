@@ -1,7 +1,7 @@
 import { memo, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import type { StashItem } from '@/lib/types';
 import { GROUP_META, TAG_META, tagLabel } from '@/lib/tags';
-import { hostname, isMonoItem, itemGroup, previewLine, relativeTime } from '@/lib/content/labels';
+import { hostname, isMonoItem, itemGroup, previewLine, relativeTime, textTitle } from '@/lib/content/labels';
 import { shikiLang, splitVariables } from '@/lib/panel/helpers';
 import { useObjectUrl } from '@/lib/panel/hooks';
 import { Icon, PinFilled } from '@/components/shared/Icon';
@@ -134,6 +134,11 @@ function ItemCardImpl({ item, now, copied, fresh, expanded, onToggleMore, onCopy
       }}
     >
       <div className="min-w-0">
+        {item.kind === 'text' && !item.secret && (
+          <div className="t-body-strong mb-0.5 truncate pr-16" data-title>
+            {textTitle(item)}
+          </div>
+        )}
         <Preview item={item} blurred={blurred} onReveal={() => setRevealed(true)} expanded={expanded} onToggleMore={onToggleMore} />
 
         <div className="t-meta mt-2 flex min-w-0 items-center gap-1.5 text-label-secondary">
@@ -348,6 +353,7 @@ export function compactPreview(item: StashItem): { text: string; mono: boolean }
     const { host, path } = linkParts(text);
     return { text: host ? `${host}${path}` : text, mono: false };
   }
+  if (item.kind === 'text') return { text: textTitle(item, 80), mono: false };
   return { text: previewLine(text, 200), mono: isMonoItem(item) && !item.tags.includes('prompt') };
 }
 

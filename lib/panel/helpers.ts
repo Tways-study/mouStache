@@ -52,7 +52,7 @@ export function sectionize<T extends Pick<StashItem, 'pinned' | 'createdAt'>>(
 }
 
 // ───────── filters ─────────
-export type FilterId = 'all' | 'pinned' | TagGroup;
+export type FilterId = 'all' | 'pinned' | 'text' | TagGroup;
 export const FILTER_GROUPS: TagGroup[] = ['code', 'prompt', 'image', 'link', 'network', 'error', 'data'];
 
 type FilterItem = Pick<StashItem, 'pinned' | 'kind' | 'tags'>;
@@ -60,14 +60,16 @@ type FilterItem = Pick<StashItem, 'pinned' | 'kind' | 'tags'>;
 export function matchesFilter(item: FilterItem, f: FilterId): boolean {
   if (f === 'all') return true;
   if (f === 'pinned') return item.pinned;
+  if (f === 'text') return item.kind === 'text';
   return itemGroup(item) === f;
 }
 
 export function countFilters(items: FilterItem[]): Record<FilterId, number> {
-  const c: Record<string, number> = { all: items.length, pinned: 0 };
+  const c: Record<string, number> = { all: items.length, pinned: 0, text: 0 };
   for (const g of [...FILTER_GROUPS, 'other']) c[g] = 0;
   for (const i of items) {
     if (i.pinned) c.pinned = (c.pinned ?? 0) + 1;
+    if (i.kind === 'text') c.text = (c.text ?? 0) + 1;
     const g = itemGroup(i);
     c[g] = (c[g] ?? 0) + 1;
   }

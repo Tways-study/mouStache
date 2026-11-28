@@ -37,7 +37,7 @@ export function FilterChips({
       {chips.map((c) => {
         const on = c.id === active;
         const tone =
-          c.id === 'all' || c.id === 'pinned' ? ACCENT_ACTIVE : GROUP_STYLE[c.id as TagGroup].active;
+          c.id === 'all' || c.id === 'pinned' || c.id === 'text' ? ACCENT_ACTIVE : GROUP_STYLE[c.id as TagGroup].active;
         return (
           <button
             key={c.id}

@@ -3,7 +3,7 @@ import {
   countFilters, dateBucket, exportFilename, formatJson, markdownFence, matchesFilter, normalizeTag, sectionize,
   shikiLang, splitVariables,
 } from './helpers';
-import { relativeTime, tagLabel, itemGroup, isMonoItem, hostname, previewLine } from '@/lib/content/labels';
+import { relativeTime, tagLabel, itemGroup, isMonoItem, hostname, previewLine, textTitle } from '@/lib/content/labels';
 
 const NOW = new Date(2026, 5, 15, 14, 0, 0).getTime();
 const ago = (h: number) => NOW - h * 3_600_000;
@@ -62,6 +62,29 @@ describe('filters', () => {
     expect(matchesFilter(items[0]!, 'pinned')).toBe(true);
     expect(matchesFilter(items[1]!, 'image')).toBe(true);
     expect(matchesFilter(items[1]!, 'code')).toBe(false);
+  });
+  it('text filter = kind text only', () => {
+    expect(countFilters(items).text).toBe(3);
+    expect(matchesFilter(items[0]!, 'text')).toBe(true);
+    expect(matchesFilter(items[1]!, 'text')).toBe(false);
+  });
+});
+
+describe('textTitle', () => {
+  it('uses the first line, stripped of markup, clipped at a word', () => {
+    expect(textTitle({ text: '\n## Meeting notes for Monday' })).toBe('Meeting notes for Monday');
+    expect(textTitle({ text: '// TODO fix the thing' })).toBe('TODO fix the thing');
+    const t = textTitle({ text: 'word '.repeat(30) });
+    expect(t.length).toBeLessThanOrEqual(49);
+    expect(t.endsWith('…')).toBe(true);
+  });
+  it('names code declarations and SQL', () => {
+    expect(textTitle({ text: 'export async function loadUser(id) {\n  return 1\n}' })).toBe('function loadUser');
+    expect(textTitle({ text: 'SELECT id, name\nFROM users WHERE 1' })).toBe('SELECT · users');
+  });
+  it('hides secrets and handles empty', () => {
+    expect(textTitle({ text: 'sk-abc', secret: true })).toBe('Secret');
+    expect(textTitle({ text: '  \n ' })).toBe('Untitled text');
   });
 });
 

@@ -209,6 +209,7 @@ export default function App() {
     for (const g of FILTER_GROUPS) {
       if (counts[g] > 0 || filter === g) list.push({ id: g, label: GROUP_META[g].label, count: counts[g] });
     }
+    if (counts.text > 0 || filter === 'text') list.push({ id: 'text', label: 'Text', count: counts.text });
     return list;
   }, [counts, filter]);
 

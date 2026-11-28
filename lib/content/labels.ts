@@ -46,6 +46,43 @@ export function hostname(url?: string): string | undefined {
   }
 }
 
+/** Short, human-recognisable title for a text item (derived, never stored). */
+export function textTitle(item: { text?: string; secret?: boolean }, max = 48): string {
+  if (item.secret) return 'Secret';
+  const lines = (item.text ?? '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return 'Untitled text';
+
+  // Prefer a declaration name for code-ish text.
+  const head = lines.slice(0, 6).join('\n');
+  const decl =
+    /\b(?:export\s+)?(?:default\s+)?(?:async\s+)?(function|class|interface|type|enum|def|fn|func|struct)\s+\*?\s*([A-Za-z_$][\w$]*)/.exec(head) ??
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[\w$]+)\s*=>/.exec(head);
+  if (decl) {
+    const t = decl.length === 3 ? `${decl[1]} ${decl[2]}` : `const ${decl[1]}`;
+    return clipTitle(t, max);
+  }
+  const first = lines[0] ?? '';
+  const verb = /^(select|insert|update|delete|create)\b/i.exec(first);
+  if (verb) {
+    const m = /\b(?:from|into|table|update)\s+([A-Za-z_][\w.]*)/i.exec(lines.join(' '));
+    if (m) return clipTitle(`${(verb[1] ?? '').toUpperCase()} · ${m[1]}`, max);
+  }
+
+  const cleaned = first
+    .replace(/^(?:#{1,6}\s*|\/\/+\s*|\/\*+\s*|\*+\s*|--+\s*|>+\s*|[-*+•]\s+|\d+[.)]\s+)/, '')
+    .replace(/\s*\*\/\s*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return clipTitle(cleaned || first, max);
+}
+
+function clipTitle(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const sp = cut.lastIndexOf(' ');
+  return (sp > max * 0.5 ? cut.slice(0, sp) : cut).replace(/[\s,;:.\-–—]+$/, '') + '…';
+}
+
 export function previewLine(text: string, max = 140): string {
   const first = text.split(/\r?\n/).find((l) => l.trim()) ?? '';
   const t = first.trim().replace(/\s+/g, ' ');

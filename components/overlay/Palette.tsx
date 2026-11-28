@@ -6,7 +6,7 @@ import type { StashItemLite } from '@/lib/messaging';
 import type { TagGroup } from '@/lib/types';
 import { tagGroup } from '@/lib/classify';
 import { debounce } from '@/lib/content/debounce';
-import { hostname, isMonoItem, itemGroup, previewLine, relativeTime, tagLabel } from '@/lib/content/labels';
+import { hostname, isMonoItem, itemGroup, previewLine, relativeTime, tagLabel, textTitle } from '@/lib/content/labels';
 import { GROUP_STYLE, GroupIcon, PinIcon, SearchIcon } from './icons';
 import { webPaletteHost, type PaletteHost, type PaletteMode } from './paletteHost';
 
@@ -20,6 +20,7 @@ export const FILTERS: { key: string; label: string; group: TagGroup | null }[] =
   { key: 'link', label: 'Links', group: 'link' },
   { key: 'network', label: 'Network', group: 'network' },
   { key: 'error', label: 'Errors', group: 'error' },
+  { key: 'text', label: 'Text', group: null },
 ];
 
 const GENERIC_TAGS = new Set(['code', 'link', 'image']);
@@ -62,7 +63,9 @@ function Row({
     ? '•••• secret hidden'
     : item.kind === 'image'
       ? `Image${item.width && item.height ? ` · ${item.width} × ${item.height}` : ''}`
-      : previewLine(item.text ?? '');
+      : item.kind === 'text'
+        ? textTitle(item)
+        : previewLine(item.text ?? '');
 
   return (
     <div
@@ -159,14 +162,15 @@ export function Palette({ returnFocus, closing = false, host: hostProp, layout =
   const run = useCallback(async (q: string, f: number) => {
     const my = ++seq.current;
     const group = FILTERS[f]?.group ?? null;
+    const textOnly = FILTERS[f]?.key === 'text';
     try {
       const res = await host.search({
         query: q,
-        limit: group ? 150 : RESULT_LIMIT,
+        limit: group || textOnly ? 150 : RESULT_LIMIT,
         ...(group === 'image' ? { kind: 'image' as const } : {}),
       });
       if (my !== seq.current) return;
-      const list = res.filter((it) => !group || itemGroup(it) === group);
+      const list = res.filter((it) => (!group || itemGroup(it) === group) && (!textOnly || it.kind === 'text'));
       setItems(list.slice(0, RESULT_LIMIT));
     } catch {
       if (my !== seq.current) return;
